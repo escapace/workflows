@@ -1,0 +1,7 @@
+ls:
+  .yaml: kebab-case
+
+ignore:
+  - .git
+  - .ls-lint.yaml
+  - node_modules
