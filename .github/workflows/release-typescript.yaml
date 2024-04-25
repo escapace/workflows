@@ -1,0 +1,106 @@
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        default: package
+        required: false
+        type: string
+      changelog:
+        required: true
+        type: string
+      enable-artifact-upload:
+        default: false
+        required: false
+        type: boolean
+      enable-github-packages-npm-registry:
+        default: false
+        required: false
+        type: boolean
+      enable-npm-registry:
+        default: false
+        required: false
+        type: boolean
+      node-version:
+        required: true
+        type: string
+      prerelease:
+        required: true
+        type: boolean
+      ref:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+    secrets:
+      CODECOV_TOKEN:
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: download package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+      - name: install latest npm
+        run: |
+          npm install -g npm
+          npm --version
+      - env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: inputs.enable-github-packages-npm-registry
+        name: publish to github packages npm registry
+        run: |
+          cat << EOF > "$HOME/.npmrc"
+            //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+            @escapace:registry=https://npm.pkg.github.com
+            provenance=true
+            always-auth=true
+          EOF
+
+          while read -d '' -r file; do
+            npm publish --provenance --access public "${file}"
+          done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -not -name '*monorepo*' -not -name '*context*' -not -name '*private*' -print0 2>/dev/null)
+      - env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: inputs.enable-npm-registry
+        name: publish to npm registry
+        run: |
+          cat << EOF > "$HOME/.npmrc"
+            //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+            @escapace:registry=https://registry.npmjs.org
+            provenance=true
+            always-auth=true
+          EOF
+
+          while read -d '' -r file; do
+            npm publish --provenance --access public "${file}"
+          done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -not -name '*monorepo*' -not -name '*context*' -not -name '*private*' -print0 2>/dev/null)
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: github release
+        run: |
+          echo "${{ inputs.changelog }}" > changelog.md
+
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then
+            gh release create v${{ inputs.version }} \
+              --prerelease \
+              --notes-file changelog.md
+          else
+            gh release create v${{ inputs.version }} \
+              --notes-file changelog.md
+          fi
