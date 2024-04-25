@@ -36,6 +36,9 @@ on:
       pnpm-version:
         description: 'pnpm version'
         value: ${{ jobs.main.outputs.pnpm-version }}
+      preid:
+        description: 'prerelease identifier'
+        value: ${{ jobs.main.outputs.preid }}
       prerelease:
         description: 'is prerelease'
         value: ${{ jobs.main.outputs.prerelease }}
@@ -59,6 +62,7 @@ jobs:
       latest: ${{ fromJSON(steps.action-context.outputs.latest) }}
       node-version: ${{ steps.node-version.outputs.value }}
       pnpm-version: ${{ steps.pnpm-version.outputs.value }}
+      preid: ${{ steps.ref.outputs.preid }}
       prerelease: ${{ fromJSON(steps.action-context.outputs.prerelease) }}
       ref: ${{ steps.ref.outputs.value }}
       version: ${{ steps.action-context.outputs.version }}

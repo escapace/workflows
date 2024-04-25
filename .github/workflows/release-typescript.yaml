@@ -85,10 +85,10 @@ jobs:
               npm publish "${file}"
             fi
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
-      - name: checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
+      # - name: checkout
+      #   uses: actions/checkout@v4
+      #   with:
+      #     ref: ${{ inputs.ref }}
       - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         name: github release
@@ -97,9 +97,11 @@ jobs:
 
           if [[ "${{ inputs.prerelease }}" == "true" ]]; then
             gh release create v${{ inputs.version }} \
+              --repo "${GITHUB_REPOSITORY}" \
               --prerelease \
               --notes-file changelog.md
           else
             gh release create v${{ inputs.version }} \
+              --repo "${GITHUB_REPOSITORY}" \
               --notes-file changelog.md
           fi
