@@ -8,10 +8,6 @@ on:
       changelog:
         required: true
         type: string
-      enable-artifact-upload:
-        default: false
-        required: false
-        type: boolean
       enable-github-packages-npm-registry:
         default: false
         required: false
@@ -33,7 +29,8 @@ on:
         required: true
         type: string
     secrets:
-      CODECOV_TOKEN:
+      NPM_TOKEN:
+        required: false
 
 permissions:
   contents: write
@@ -64,13 +61,14 @@ jobs:
           cat << EOF > "$HOME/.npmrc"
             //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
             @escapace:registry=https://npm.pkg.github.com
-            provenance=true
             always-auth=true
           EOF
 
           while read -d '' -r file; do
-            npm publish --provenance --access public "${file}"
-          done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -not -name '*monorepo*' -not -name '*context*' -not -name '*private*' -print0 2>/dev/null)
+            if [[ "$(tar -axf "${file}" package/package.json -O | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
+              npm publish "${file}"
+            fi
+          done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
       - env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         if: inputs.enable-npm-registry
@@ -79,13 +77,14 @@ jobs:
           cat << EOF > "$HOME/.npmrc"
             //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
             @escapace:registry=https://registry.npmjs.org
-            provenance=true
             always-auth=true
           EOF
 
           while read -d '' -r file; do
-            npm publish --provenance --access public "${file}"
-          done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -not -name '*monorepo*' -not -name '*context*' -not -name '*private*' -print0 2>/dev/null)
+            if [[ "$(tar -axf "${file}" package/package.json -O | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
+              npm publish "${file}"
+            fi
+          done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
       - name: checkout
         uses: actions/checkout@v4
         with:
