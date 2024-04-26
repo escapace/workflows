@@ -11,10 +11,8 @@
     "@commitlint/config-conventional": "19.2.2",
     "@ls-lint/ls-lint": "2.2.3",
     "eslint": "9.1.1",
-    "eslint-config-escapace": "5.0.0",
-    "husky": "9.0.11",
-    "is-ci": "3.0.1",
-    "lint-staged": "15.2.2",
+    "eslint-config-escapace": "5.0.5",
+    "lefthook": "1.6.10",
     "prettier": "3.2.5",
     "prettier-config-escapace": "1.2.0",
     "syncpack": "12.3.2",
@@ -22,14 +20,13 @@
   },
   "engines": {
     "node": ">=20.12.0",
-    "pnpm": ">=8.15.6"
+    "pnpm": ">=9.0.6"
   },
   "license": "MPL-2.0",
-  "module": "lib/esm/index.mjs",
   "private": true,
   "scripts": {
     "lint": "ls-lint --config .ls-lint.yaml && eslint",
-    "prepare": "is-ci || husky"
+    "prepare": "lefthook install"
   },
   "type": "module"
 }
