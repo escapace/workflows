@@ -1,0 +1,44 @@
+on:
+  workflow_call:
+    inputs:
+      enable-github-packages-container-registry:
+        default: false
+        required: false
+        type: boolean
+      enable-github-packages-npm-registry:
+        default: false
+        required: false
+        type: boolean
+
+permissions:
+  packages: write
+
+jobs:
+  main:
+    concurrency: retention-policy
+    runs-on: ubuntu-latest
+    steps:
+      - id: name
+        name: name
+        run: |
+          echo "value=${GITHUB_REPOSITORY#*/}" >> $GITHUB_OUTPUT
+        shell: bash
+      - if: inputs.enable-github-packages-container-registry
+        uses: actions/delete-package-versions@v5
+        with:
+          min-versions-to-keep: 10
+          package-name: ${{ steps.name.outputs.value }}
+          package-type: 'container'
+      - if: inputs.enable-github-packages-container-registry
+        uses: actions/delete-package-versions@v5
+        with:
+          delete-only-untagged-versions: true
+          min-versions-to-keep: 0
+          package-name: ${{ steps.name.outputs.value }}
+          package-type: 'container'
+      - if: inputs.enable-github-packages-npm-registry
+        uses: actions/delete-package-versions@v5
+        with:
+          min-versions-to-keep: 10
+          package-name: ${{ steps.name.outputs.value }}
+          package-type: 'npm'
