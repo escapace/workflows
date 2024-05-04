@@ -60,8 +60,8 @@ jobs:
       docker-metadata-tags: ${{ steps.docker-metadata.outputs.tags }}
       environment: ${{ steps.action-context.outputs.environment }}
       latest: ${{ fromJSON(steps.action-context.outputs.latest) }}
-      node-version: ${{ steps.node-version.outputs.value }}
-      pnpm-version: ${{ steps.pnpm-version.outputs.value }}
+      node-version: ${{ steps.action-context.outputs.value }}
+      pnpm-version: ${{ steps.action-context.outputs.value }}
       preid: ${{ steps.ref.outputs.preid }}
       prerelease: ${{ fromJSON(steps.action-context.outputs.prerelease) }}
       ref: ${{ steps.ref.outputs.value }}
@@ -85,7 +85,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.ref.outputs.value }}
       - id: action-context
-        uses: escapace/action-context@v0.9.0
+        uses: escapace/action-context@v0.10.0
         with:
           token: ${{ github.token }}
       - env:
@@ -106,13 +106,3 @@ jobs:
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(steps.action-context.outputs.version, '0') == false && fromJSON(steps.action-context.outputs.prerelease) == false }},value=v${{ steps.action-context.outputs.version }}
             type=match,pattern=v(\d),group=1,enable=${{ startsWith(steps.action-context.outputs.version, '0') == false && fromJSON(steps.action-context.outputs.prerelease) == false }},value=v${{ steps.action-context.outputs.version }}
             type=raw,value=latest,enable=${{ fromJSON(steps.action-context.outputs.latest) && fromJSON(steps.action-context.outputs.prerelease) == false }}
-      - id: node-version
-        name: node-version
-        run: |
-          echo "value=$(cat package.json | jq -r .engines.node | grep -oP '([0-9]+)\.([0-9]+)\.([0-9]+)' | head -n 1)"  >> $GITHUB_OUTPUT
-        shell: bash
-      - id: pnpm-version
-        name: pnpm-version
-        run: |
-          echo "value=$(cat package.json | jq -r .engines.pnpm | grep -oP '([0-9]+)\.([0-9]+)\.([0-9]+)' | head -n 1)" >> $GITHUB_OUTPUT
-        shell: bash
