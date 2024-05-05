@@ -60,8 +60,8 @@ jobs:
       docker-metadata-tags: ${{ steps.docker-metadata.outputs.tags }}
       environment: ${{ steps.action-context.outputs.environment }}
       latest: ${{ fromJSON(steps.action-context.outputs.latest) }}
-      node-version: ${{ steps.action-context.outputs.value }}
-      pnpm-version: ${{ steps.action-context.outputs.value }}
+      node-version: ${{ steps.action-context.outputs.node-version }}
+      pnpm-version: ${{ steps.action-context.outputs.pnpm-version }}
       preid: ${{ steps.ref.outputs.preid }}
       prerelease: ${{ fromJSON(steps.action-context.outputs.prerelease) }}
       ref: ${{ steps.ref.outputs.value }}
