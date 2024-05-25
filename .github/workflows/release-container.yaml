@@ -89,8 +89,28 @@ jobs:
           tar -xf ${{ inputs.context }}
           printf '%s\n' "${array[@]}" | xargs rm -f
         shell: bash
-      - id: build-and-push
-        name: build and push
+      - id: test
+        name: test
+        uses: docker/build-push-action@v5
+        with:
+          annotations: ${{ inputs.annotations }}
+          build-args: |
+            DOCKER_TEST=true
+            ${{ inputs.build-args }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: .
+          file: ${{ inputs.file }}
+          labels: ${{ inputs.labels }}
+          platforms: ${{ inputs.platforms }}
+          provenance: false
+          push: false
+          sbom: false
+          tags: ${{ inputs.tags }}
+      # TODO: test
+      - id: push
+        if: inputs.enable-push == true
+        name: (re)build and push
         uses: docker/build-push-action@v5
         with:
           annotations: ${{ inputs.annotations }}
@@ -105,16 +125,16 @@ jobs:
           push: ${{ inputs.enable-push }}
           sbom: false
           tags: ${{ inputs.tags }}
-      - if: inputs.enable-cosign == true
+      - if: inputs.enable-cosign == true && inputs.enable-push == true
         name: install cosign
         uses: sigstore/cosign-installer@v3.5.0
         # with:
         #   cosign-release: 'v2.1.1'
       - env:
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+          DIGEST: ${{ steps.push.outputs.digest }}
           # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
           TAGS: ${{ inputs.tags }}
-        if: inputs.enable-cosign == true
+        if: inputs.enable-cosign == true && inputs.enable-push == true
         name: sign the docker image
         run: |
           echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
