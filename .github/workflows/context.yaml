@@ -1,6 +1,11 @@
 on:
   workflow_call:
     inputs:
+      # https://docs.docker.com/build/ci/github-actions/annotations/
+      docker-metadata-annotations-levels:
+        default: manifest,index
+        required: false
+        type: string
       enable-docker-metadata:
         default: false
         required: false
@@ -90,7 +95,7 @@ jobs:
           node-version: 20.12.2
           token: ${{ github.token }}
       - env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ input.docker-metadata-annotations-levels }}
         id: docker-metadata
         if: inputs.enable-docker-metadata
         name: docker meta
