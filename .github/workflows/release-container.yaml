@@ -123,7 +123,6 @@ jobs:
             type=local,src=/tmp/.buildx-cache
           cache-to: |
             type=gha,mode=max
-            type=local,dest=/tmp/.buildx-cache,mode=max
           context: .
           file: ${{ inputs.file }}
           labels: ${{ inputs.labels }}
