@@ -97,8 +97,11 @@ jobs:
           build-args: |
             DOCKER_TEST=true
             ${{ inputs.build-args }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+          cache-to: |
+            type=gha,mode=max
+            type=local,dest=/tmp/.buildx-cache,mode=max
           context: .
           file: ${{ inputs.file }}
           labels: ${{ inputs.labels }}
@@ -115,8 +118,12 @@ jobs:
         with:
           annotations: ${{ inputs.annotations }}
           build-args: ${{ inputs.build-args }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+            type=local,src=/tmp/.buildx-cache
+          cache-to: |
+            type=gha,mode=max
+            type=local,dest=/tmp/.buildx-cache,mode=max
           context: .
           file: ${{ inputs.file }}
           labels: ${{ inputs.labels }}
