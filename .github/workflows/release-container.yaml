@@ -27,6 +27,11 @@ on:
         description: 'push is a shorthand for --output=type=registry'
         required: false
         type: boolean
+      enable-test:
+        default: false
+        description: 'run your tests when building the image'
+        required: false
+        type: boolean
       file:
         default: Dockerfile
         description: 'path to the dockerfile'
@@ -89,7 +94,17 @@ jobs:
           tar -xf ${{ inputs.context }}
           printf '%s\n' "${array[@]}" | xargs rm -f
         shell: bash
+      - id: dockerfile
+        run: |
+          targets=$(sed -n 's/^FROM[[:space:]]\+[^ ]\+[[:space:]]\+[aA][sS][[:space:]]\+\([^ ]\+\)$/\1/p' Dockerfile | jq -R -s '{"targets": split("\n")[:-1]}')
+
+          if echo "$targets" | jq -e '.targets | index("test")' > /dev/null; then
+            echo "test=true" >> $GITHUB_OUTPUT
+          else
+            echo "test=false" >> $GITHUB_OUTPUT
+          fi
       - id: test
+        if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         name: test
         uses: docker/build-push-action@v5
         with:
@@ -110,7 +125,7 @@ jobs:
           push: false
           sbom: false
           tags: ${{ inputs.tags }}
-      # TODO: test
+          target: test
       - id: push
         if: inputs.enable-push == true
         name: (re)build and push
