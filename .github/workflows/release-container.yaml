@@ -106,7 +106,7 @@ jobs:
       - id: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         name: test
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           annotations: ${{ inputs.annotations }}
           build-args: |
@@ -129,7 +129,7 @@ jobs:
       - id: push
         if: inputs.enable-push == true
         name: (re)build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           annotations: ${{ inputs.annotations }}
           build-args: ${{ inputs.build-args }}
