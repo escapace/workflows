@@ -96,7 +96,7 @@ jobs:
         shell: bash
       - id: dockerfile
         run: |
-          targets=$(sed -n 's/^FROM[[:space:]]\+[^ ]\+[[:space:]]\+[aA][sS][[:space:]]\+\([^ ]\+\)$/\1/p' Dockerfile | jq -R -s '{"targets": split("\n")[:-1]}')
+          targets=$(sed -n 's/^FROM[[:space:]]\+[^ ]\+[[:space:]]\+[aA][sS][[:space:]]\+\([^ ]\+\)$/\1/p' ${{ inputs.file }} | jq -R -s '{"targets": split("\n")[:-1]}')
 
           if echo "$targets" | jq -e '.targets | index("test")' > /dev/null; then
             echo "test=true" >> $GITHUB_OUTPUT
