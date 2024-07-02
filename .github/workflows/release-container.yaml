@@ -104,7 +104,7 @@ jobs:
             echo "test=false" >> $GITHUB_OUTPUT
           fi
       - id: test
-        if: steps.dockerfile.outputs.test == "true" && inputs.enable-test == true
+        if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         name: test
         uses: docker/build-push-action@v5
         with:
