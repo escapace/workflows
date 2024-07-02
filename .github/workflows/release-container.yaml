@@ -28,7 +28,7 @@ on:
         required: false
         type: boolean
       enable-test:
-        default: false
+        default: true
         description: 'run your tests when building the image'
         required: false
         type: boolean
@@ -104,7 +104,7 @@ jobs:
             echo "test=false" >> $GITHUB_OUTPUT
           fi
       - id: test
-        if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
+        if: steps.dockerfile.outputs.test == "true" && inputs.enable-test == true
         name: test
         uses: docker/build-push-action@v5
         with:
