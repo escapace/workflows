@@ -1,0 +1,36 @@
+on:
+  workflow_call:
+    inputs:
+      changelog:
+        required: true
+        type: string
+      prerelease:
+        required: true
+        type: boolean
+      version:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: github release
+        run: |
+          echo "${{ inputs.changelog }}" > changelog.md
+
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then
+            gh release create v${{ inputs.version }} \
+              --repo "${GITHUB_REPOSITORY}" \
+              --prerelease \
+              --notes-file changelog.md
+          else
+            gh release create v${{ inputs.version }} \
+              --repo "${GITHUB_REPOSITORY}" \
+              --notes-file changelog.md
+          fi
