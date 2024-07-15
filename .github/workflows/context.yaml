@@ -92,7 +92,6 @@ jobs:
       - id: action-context
         uses: escapace/action-context@v0.10.4
         with:
-          node-version: 20.15.1
           token: ${{ github.token }}
       - env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.docker-metadata-annotations-levels }}
