@@ -90,9 +90,9 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.ref.outputs.value }}
       - id: action-context
-        uses: escapace/action-context@v0.10.2
+        uses: escapace/action-context@v0.10.3
         with:
-          node-version: 20.12.2
+          node-version: 20.15.1
           token: ${{ github.token }}
       - env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.docker-metadata-annotations-levels }}
