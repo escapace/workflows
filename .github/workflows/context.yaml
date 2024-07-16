@@ -90,7 +90,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.ref.outputs.value }}
       - id: action-context
-        uses: escapace/action-context@v0.10.5
+        uses: escapace/action-context@v0.10.7
         with:
           node-version: 20.15.1
           token: ${{ github.token }}
