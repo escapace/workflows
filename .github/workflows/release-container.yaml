@@ -148,7 +148,7 @@ jobs:
           tags: ${{ inputs.tags }}
       - if: inputs.enable-cosign == true && inputs.enable-push == true
         name: install cosign
-        uses: sigstore/cosign-installer@v3.5.0
+        uses: sigstore/cosign-installer@v3.6.0
         # with:
         #   cosign-release: 'v2.1.1'
       - env:
