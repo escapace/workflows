@@ -64,7 +64,7 @@ jobs:
         with:
           tflint_version: ${{ inputs.tflint-version }}
       - name: trivy setup
-        uses: aquasecurity/setup-trivy@v0.2.0
+        uses: aquasecurity/setup-trivy@v0.2.2
         with:
           cache: true
           version: ${{ inputs.trivy-version }}
