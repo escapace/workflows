@@ -59,6 +59,18 @@ jobs:
         with:
           terraform_version: ${{ inputs.terraform-version }}
           terraform_wrapper: false
+      - name: setup terraform plugin cache directory
+        run: |
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >>"$GITHUB_ENV"
+          mkdir --parents "$HOME/.terraform.d/plugin-cache"
+      - name: terraform plugin cache
+        uses: actions/cache@v4
+        with:
+          key: terraform-plugin-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          path: |
+            ~/.terraform.d/plugin-cache
+          restore-keys: |
+            terraform-plugin-${{ runner.os }}-
       - name: setup tflint
         uses: terraform-linters/setup-tflint@v4
         with:
