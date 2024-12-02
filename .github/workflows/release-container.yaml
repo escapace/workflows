@@ -110,7 +110,7 @@ jobs:
         with:
           annotations: ${{ inputs.annotations }}
           build-args: |
-            DOCKER_TEST=true
+            CONTAINER_TEST=true
             ${{ inputs.build-args }}
           cache-from: |
             type=gha
