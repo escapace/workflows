@@ -159,3 +159,14 @@ jobs:
         name: sign the docker image
         run: |
           echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+      # Adapted from https://docs.docker.com/build/ci/github-actions/multi-platform/
+      - env:
+          ANNOTATIONS: ${{ inputs.annotations }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          TAGS: ${{ inputs.tags }}
+        name: create manifest list and push
+        run: |
+          readarray -t lines <<< "$ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
+          readarray -t lines <<< "$TAGS"; tags=(); for line in "${lines[@]}"; do tags+=(-t "$line"); done
+          docker buildx imagetools create \
+          "${annotations[@]}" "${tags[@]}" "$GITHUB_REPOSITORY":$DIGEST
