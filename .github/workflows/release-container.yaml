@@ -173,4 +173,4 @@ jobs:
       #   with:
       #     push-to-registry: true
       #     subject-digest: ${{ steps.push.outputs.digest }}
-      #     subject-name: ghcr.io/${{ github.repository }}:${{ steps.push.outputs.digest }}
+      #     subject-name: ghcr.io/${{ github.repository }}
