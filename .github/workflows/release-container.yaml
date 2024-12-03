@@ -164,9 +164,17 @@ jobs:
           ANNOTATIONS: ${{ inputs.annotations }}
           DIGEST: ${{ steps.push.outputs.digest }}
           TAGS: ${{ inputs.tags }}
+        if: inputs.enable-push == true
         name: create manifest list and push
         run: |
           readarray -t lines <<< "$ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
           readarray -t lines <<< "$TAGS"; tags=(); for line in "${lines[@]}"; do tags+=(-t "$line"); done
           docker buildx imagetools create \
-          "${annotations[@]}" "${tags[@]}" "$GITHUB_REPOSITORY":$DIGEST
+          "${annotations[@]}" "${tags[@]}" "ghcr.io/${GITHUB_REPOSITORY}:${DIGEST}"
+      # - if: inputs.enable-push == true
+      #   name: attest
+      #   uses: actions/attest-build-provenance@v1
+      #   with:
+      #     push-to-registry: true
+      #     subject-digest: ${{ steps.push.outputs.digest }}
+      #     subject-name: ghcr.io/${{ github.repository }}:${{ steps.push.outputs.digest }}
