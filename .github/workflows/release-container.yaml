@@ -79,7 +79,7 @@ jobs:
         run: |
           archive=""
 
-          readarray -t array < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**')
+          readarray -t archives < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**')
 
           while read -d '' -r file; do
             if tar -axOf "${file}" package/package.json package/pnpm-workspace.yaml &>/dev/null; then
@@ -99,9 +99,9 @@ jobs:
           echo "archive=${archive}" >> "$GITHUB_OUTPUT"
 
           tar -axf "${archive}"
-          printf '%s\n' "${array[@]}" | xargs rm -f
+          printf '%s\n' "${archives[@]}" | xargs rm -f
 
-          declare -A array=()
+          declare -A packages=()
 
           while read -d '' -r file; do
             directory="$(dirname "$file")"
@@ -113,15 +113,15 @@ jobs:
               "$(jq -r 'if .name | type == "string" and startswith("@container/") then true else false end' "$directory/package.json")" == "true" ]]; then
               name="$(jq -r '.name | sub("^@container/" ; "")' "${directory}/package.json")"
               dockerfile="${directory}/Dockerfile"
-              array["${name}"]="${dockerfile}"
+              packages["${name}"]="${dockerfile}"
             fi
           done < <(find "." -type f -name 'package.json' -not -path '**/node_modules/**' -print0 2>/dev/null)
 
           keys=()
           values=()
-          for key in "${!array[@]}"; do
+          for key in "${!packages[@]}"; do
             keys+=("$key")
-            values+=("${array[$key]}")
+            values+=("${packages[$key]}")
           done
 
           if [ ${#keys[@]} -eq 0 ]; then
