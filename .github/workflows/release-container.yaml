@@ -47,16 +47,16 @@ on:
       version:
         required: true
         type: string
-    outputs:
-      digest:
-        description: 'image digest'
-        value: ${{ jobs.main.outputs.digest }}
-      image-id:
-        description: 'image id'
-        value: ${{ jobs.main.outputs.image-id }}
-      metadata:
-        description: 'build result metadata'
-        value: ${{ jobs.main.outputs.metadata }}
+    # outputs:
+    #   digest:
+    #     description: 'image digest'
+    #     value: ${{ jobs.main.outputs.digest }}
+    #   image-id:
+    #     description: 'image id'
+    #     value: ${{ jobs.main.outputs.image-id }}
+    #   metadata:
+    #     description: 'build result metadata'
+    #     value: ${{ jobs.main.outputs.metadata }}
 
 # permissions:
 #   packages: write
@@ -139,14 +139,6 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.ref }}
       - env:
-          DOCKERFILE: ${{ matrix.dockerfile }}
-        id: name
-        name: package name
-        run: |
-          name="$(jq -r '.name | sub("^@container/" ; "")' "$(dirname "$DOCKERFILE")/package.json")"
-          echo "value=${name}" >> "$GITHUB_OUTPUT"
-        shell: bash
-      - env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.annotations-levels }}
         id: container-metadata
         name: container metadata
@@ -163,6 +155,13 @@ jobs:
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
             type=match,pattern=v(\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
             type=raw,value=latest,enable=${{ inputs.latest && inputs.prerelease == false }}
+      - env:
+          WORKSPACE: ${{ github.workspace }}
+        name: extract context archive
+        run: |
+          rm -rf "${WORKSPACE}"
+          mkdir -p "${WORKSPACE}"
+        shell: bash
       - name: download context archive
         uses: actions/download-artifact@v4
         with:
@@ -174,6 +173,14 @@ jobs:
           readarray -t array < <(find . -type f -name '*.tgz')
           tar -xf "${ARCHIVE}"
           printf '%s\n' "${array[@]}" | xargs rm -f
+        shell: bash
+      - env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        id: name
+        name: package name
+        run: |
+          name="$(jq -r '.name | sub("^@container/" ; "")' "$(dirname "$DOCKERFILE")/package.json")"
+          echo "value=${name}" >> "$GITHUB_OUTPUT"
         shell: bash
       - name: docker login
         uses: docker/login-action@v3
