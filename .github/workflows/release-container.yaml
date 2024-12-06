@@ -67,6 +67,7 @@ jobs:
     outputs:
       archive: ${{ steps.context.outputs.archive }}
       dockerfiles: ${{ steps.context.outputs.dockerfiles }}
+      names: ${{ steps.context.outputs.names }}
     runs-on: ubuntu-latest
     steps:
       - name: download context archive
@@ -136,6 +137,7 @@ jobs:
           fi
         shell: bash
   main:
+    name: ${{ matrix.name }}
     needs:
       - context
     outputs:
