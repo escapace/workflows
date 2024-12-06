@@ -52,7 +52,7 @@ jobs:
           EOF
 
           while read -d '' -r file; do
-            if [[ "$(tar -axf "${file}" package/package.json -O | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
+            if [[ "$(tar -axOf "${file}" package/package.json | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
               npm publish "${file}"
             fi
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
@@ -68,7 +68,7 @@ jobs:
           EOF
 
           while read -d '' -r file; do
-            if [[ "$(tar -axf "${file}" package/package.json -O | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
+            if [[ "$(tar -axOf "${file}" package/package.json | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
               npm publish "${file}"
             fi
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)

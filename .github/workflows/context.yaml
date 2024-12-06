@@ -1,15 +1,5 @@
 on:
   workflow_call:
-    inputs:
-      # https://docs.docker.com/build/ci/github-actions/annotations/
-      docker-metadata-annotations-levels:
-        default: manifest,index
-        required: false
-        type: string
-      enable-docker-metadata:
-        default: false
-        required: false
-        type: boolean
     outputs:
       changelog:
         description: 'short github sha'
@@ -17,18 +7,6 @@ on:
       commitish:
         description: 'short github sha'
         value: ${{ jobs.main.outputs.commitish }}
-      docker-metadata-annotations:
-        description: 'docker annotations'
-        value: ${{ jobs.main.outputs.docker-metadata-annotations }}
-      docker-metadata-json:
-        description: 'json output of docker tags and labels'
-        value: ${{ jobs.main.outputs.docker-metadata-json }}
-      docker-metadata-labels:
-        description: 'docker labels'
-        value: ${{ jobs.main.outputs.docker-metadata-labels }}
-      docker-metadata-tags:
-        description: 'docker tags'
-        value: ${{ jobs.main.outputs.docker-metadata-tags }}
       environment:
         description: 'version'
         value: ${{ jobs.main.outputs.environment }}
@@ -59,10 +37,6 @@ jobs:
     outputs:
       changelog: ${{ steps.action-context.outputs.changelog }}
       commitish: ${{ steps.action-context.outputs.commitish }}
-      docker-metadata-annotations: ${{ steps.docker-metadata.outputs.annotations }}
-      docker-metadata-json: ${{ steps.docker-metadata.outputs.json }}
-      docker-metadata-labels: ${{ steps.docker-metadata.outputs.labels }}
-      docker-metadata-tags: ${{ steps.docker-metadata.outputs.tags }}
       environment: ${{ steps.action-context.outputs.environment }}
       latest: ${{ fromJSON(steps.action-context.outputs.latest) }}
       node-version: ${{ steps.action-context.outputs.node-version }}
@@ -94,21 +68,3 @@ jobs:
         with:
           node-version: 20.15.1
           token: ${{ github.token }}
-      - env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.docker-metadata-annotations-levels }}
-        id: docker-metadata
-        if: inputs.enable-docker-metadata
-        name: docker meta
-        uses: docker/metadata-action@v5
-        with:
-          context: git
-          flavor: |
-            latest=false
-            prefix=
-            suffix=
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=match,pattern=v(.*),group=1,value=v${{ steps.action-context.outputs.version }}
-            type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(steps.action-context.outputs.version, '0') == false && fromJSON(steps.action-context.outputs.prerelease) == false }},value=v${{ steps.action-context.outputs.version }}
-            type=match,pattern=v(\d),group=1,enable=${{ startsWith(steps.action-context.outputs.version, '0') == false && fromJSON(steps.action-context.outputs.prerelease) == false }},value=v${{ steps.action-context.outputs.version }}
-            type=raw,value=latest,enable=${{ fromJSON(steps.action-context.outputs.latest) && fromJSON(steps.action-context.outputs.prerelease) == false }}

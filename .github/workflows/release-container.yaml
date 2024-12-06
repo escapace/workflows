@@ -1,21 +1,18 @@
 on:
   workflow_call:
     inputs:
-      annotations:
-        description: 'list of annotation to set to the image'
+      annotations-levels:
+        default: index
         required: false
         type: string
       artifact-name:
+        default: package
         description: 'artifact name'
-        required: true
+        required: false
         type: string
       build-args:
         description: 'list of build-time variables'
         required: false
-        type: string
-      context:
-        description: "build's context is tarball path"
-        required: true
         type: string
       enable-cosign:
         default: false
@@ -32,21 +29,23 @@ on:
         description: 'run your tests when building the image'
         required: false
         type: boolean
-      file:
-        default: Dockerfile
-        description: 'path to the dockerfile'
-        type: string
-      labels:
-        description: 'list of metadata for an image'
-        required: false
-        type: string
+      latest:
+        description: 'add the latest tag'
+        required: true
+        type: boolean
       platforms:
         description: 'list of target platforms for build'
         required: false
         type: string
-      tags:
-        description: 'list of tags'
-        required: false
+      prerelease:
+        description: 'whether it is a prerelease'
+        required: true
+        type: boolean
+      ref:
+        required: true
+        type: string
+      version:
+        required: true
         type: string
     outputs:
       digest:
@@ -64,17 +63,108 @@ on:
 #   id-token: write
 
 jobs:
-  main:
+  context:
     outputs:
-      digest: ${{ steps.build-and-push.outputs.digest }}
-      image-id: ${{ steps.build-and-push.outputs.imageid }}
-      metadata: ${{ steps.build-and-push.outputs.metadata }}
+      archive: ${{ steps.context.outputs.archive }}
+      dockerfiles: ${{ steps.context.outputs.dockerfiles }}
     runs-on: ubuntu-latest
     steps:
       - name: download context archive
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
+      - id: context
+        name: extract context archive
+        run: |
+          archive=""
+
+          readarray -t array < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**')
+
+          while read -d '' -r file; do
+            if tar -axOf "${file}" package/package.json package/pnpm-workspace.yaml &>/dev/null; then
+              archive="${file}"
+            fi
+          done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
+
+          if [[ "${archive}" == "" ]]
+          then
+            while read -d '' -r file; do
+              if [[ "$(tar -axOf "${file}" package/package.json | jq -r 'if .scripts["container:build"] | type == "string" then true else false end')" == "true" ]]; then
+                archive="${file}"
+              fi
+            done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
+          fi
+
+          echo "archive=${archive}" >> "$GITHUB_OUTPUT"
+
+          tar -axf "${archive}"
+          printf '%s\n' "${array[@]}" | xargs rm -f
+
+          dockerfiles=()
+
+          while read -d '' -r file; do
+            directory="$(dirname "$file")"
+
+            if [[ -f "${directory}/package.json" &&
+              -f "${directory}/Dockerfile" &&
+              "$(jq -r 'if .scripts["container:build"] | type == "string" then true else false end' "$directory/package.json")" == "true" &&
+              "$(jq -r 'if has("private") then .private else false end' "$directory/package.json")" == "true" &&
+              "$(jq -r 'if .name | type == "string" and startswith("@container/") then true else false end' "$directory/package.json")" == "true" ]]; then
+              dockerfiles+=("${directory}/Dockerfile")
+            fi
+          done < <(find "." -type f -name 'package.json' -not -path '**/node_modules/**' -print0 2>/dev/null)
+
+          # Check if the array is empty
+          if [ ${#dockerfiles[@]} -eq 0 ]; then
+            dockerfiles_json="[]"
+          else
+            dockerfiles_json=$(printf '%s\n' "${dockerfiles[@]}" | jq -R . | jq -sc .)
+          fi
+
+          echo "dockerfiles=${dockerfiles_json}" >> "$GITHUB_OUTPUT"
+        shell: bash
+  main:
+    needs:
+      - context
+    outputs:
+      digest: ${{ steps.build-and-push.outputs.digest }}
+      image-id: ${{ steps.build-and-push.outputs.imageid }}
+      metadata: ${{ steps.build-and-push.outputs.metadata }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      - env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.annotations-levels }}
+        id: container-metadata
+        name: container metadata
+        uses: docker/metadata-action@v5
+        with:
+          context: git
+          flavor: |
+            latest=false
+            prefix=
+            suffix=
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=match,pattern=v(.*),group=1,value=v${{ inputs.version }}
+            type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
+            type=match,pattern=v(\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
+            type=raw,value=latest,enable=${{ inputs.latest && inputs.prerelease == false }}
+      - name: download context archive
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+      - name: extract context archive
+        run: |
+          readarray -t array < <(find . -type f -name '*.tgz')
+          tar -xf ${{ matrix.archive }}
+          printf '%s\n' "${array[@]}" | xargs rm -f
+        shell: bash
       - name: docker login
         uses: docker/login-action@v3
         with:
@@ -88,60 +178,56 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
-      - name: extract context
-        run: |
-          readarray -t array < <(find . -type f -name '*.tgz')
-          tar -xf ${{ inputs.context }}
-          printf '%s\n' "${array[@]}" | xargs rm -f
-        shell: bash
+      - uses: escapace/action-dockerfile-tools@v0.1.0
       - id: dockerfile
         run: |
-          targets=$(sed -n 's/^FROM[[:space:]]\+[^ ]\+[[:space:]]\+[aA][sS][[:space:]]\+\([^ ]\+\)$/\1/p' ${{ inputs.file }} | jq -R -s '{"targets": split("\n")[:-1]}')
+          stages=$(dockerfile-tools list-stages --dockerfile ${{ matrix.dockerfile }})
 
-          if echo "$targets" | jq -e '.targets | index("test")' > /dev/null; then
-            echo "test=true" >> $GITHUB_OUTPUT
+          if echo "$stages" | jq -e '.[] | select(. == "test")' > /dev/null; then
+            echo "test=true" >> "$GITHUB_OUTPUT"
           else
-            echo "test=false" >> $GITHUB_OUTPUT
+            echo "test=false" >> "$GITHUB_OUTPUT"
           fi
+        shell: bash
       - id: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         name: test
         uses: docker/build-push-action@v5
         with:
-          annotations: ${{ inputs.annotations }}
+          annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: |
             CONTAINER_TEST=true
             ${{ inputs.build-args }}
           cache-from: |
             type=gha
           context: .
-          file: ${{ inputs.file }}
-          labels: ${{ inputs.labels }}
+          file: ${{ matrix.dockerfile }}
+          labels: ${{ steps.container-metadata.outputs.labels }}
           platforms: ${{ inputs.platforms }}
           provenance: false
           push: false
           sbom: false
-          tags: ${{ inputs.tags }}
+          tags: ${{ steps.container-metadata.outputs.tags }}
           target: test
       - id: push
         if: inputs.enable-push == true
         name: (re)build and push
         uses: docker/build-push-action@v5
         with:
-          annotations: ${{ inputs.annotations }}
+          annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: ${{ inputs.build-args }}
           cache-from: |
             type=gha
           cache-to: |
             type=gha,mode=max
           context: .
-          file: ${{ inputs.file }}
-          labels: ${{ inputs.labels }}
+          file: ${{ matrix.dockerfile }}
+          labels: ${{ steps.container-metadata.outputs.labels }}
           platforms: ${{ inputs.platforms }}
           provenance: false
           push: ${{ inputs.enable-push }}
           sbom: false
-          tags: ${{ inputs.tags }}
+          tags: ${{ steps.container-metadata.outputs.tags }}
       - if: inputs.enable-cosign == true && inputs.enable-push == true
         name: install cosign
         uses: sigstore/cosign-installer@v3.7.0
@@ -150,16 +236,16 @@ jobs:
       - env:
           DIGEST: ${{ steps.push.outputs.digest }}
           # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-          TAGS: ${{ inputs.tags }}
+          TAGS: ${{ steps.container-metadata.outputs.tags }}
         if: inputs.enable-cosign == true && inputs.enable-push == true
         name: sign the docker image
         run: |
           echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
       # Adapted from https://docs.docker.com/build/ci/github-actions/multi-platform/
       - env:
-          ANNOTATIONS: ${{ inputs.annotations }}
+          ANNOTATIONS: ${{ steps.container-metadata.outputs.annotations }}
           DIGEST: ${{ steps.push.outputs.digest }}
-          TAGS: ${{ inputs.tags }}
+          TAGS: ${{ steps.container-metadata.outputs.tags }}
         if: inputs.enable-push == true
         name: create manifest list and push
         run: |
@@ -174,3 +260,7 @@ jobs:
       #     push-to-registry: true
       #     subject-digest: ${{ steps.push.outputs.digest }}
       #     subject-name: ghcr.io/${{ github.repository }}
+    strategy:
+      matrix:
+        archive: ${{ needs.context.outputs.archive }}
+        dockerfile: ${{ fromJSON(needs.context.outputs.dockerfiles) }}
