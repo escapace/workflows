@@ -139,6 +139,14 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.ref }}
       - env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        id: name
+        name: package name
+        run: |
+          name="$(jq -r '.name | sub("^@container/" ; "")' "$(dirname "$DOCKERFILE")/package.json")"
+          echo "value=${name}" >> "$GITHUB_OUTPUT"
+        shell: bash
+      - env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.annotations-levels }}
         id: container-metadata
         name: container metadata
@@ -149,7 +157,7 @@ jobs:
             latest=false
             prefix=
             suffix=
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository_owner	}}/${{ steps.name.outputs.value }}
           tags: |
             type=match,pattern=v(.*),group=1,value=v${{ inputs.version }}
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
@@ -159,10 +167,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
-      - name: extract context archive
+      - env:
+          ARCHIVE: ${{ matrix.archive }}
+        name: extract context archive
         run: |
           readarray -t array < <(find . -type f -name '*.tgz')
-          tar -xf ${{ matrix.archive }}
+          tar -xf "${ARCHIVE}"
           printf '%s\n' "${array[@]}" | xargs rm -f
         shell: bash
       - name: docker login
@@ -179,9 +189,11 @@ jobs:
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
       - uses: escapace/action-dockerfile-tools@v0.1.0
-      - id: dockerfile
+      - env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        id: dockerfile
         run: |
-          stages=$(dockerfile-tools list-stages --dockerfile ${{ matrix.dockerfile }})
+          stages=$(dockerfile-tools list-stages --dockerfile "${DOCKERFILE}")
 
           if echo "$stages" | jq -e '.[] | select(. == "test")' > /dev/null; then
             echo "test=true" >> "$GITHUB_OUTPUT"
@@ -241,7 +253,7 @@ jobs:
         name: sign the docker image
         run: |
           echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
-      # Adapted from https://docs.docker.com/build/ci/github-actions/multi-platform/
+      # adapted from https://docs.docker.com/build/ci/github-actions/multi-platform/
       - env:
           ANNOTATIONS: ${{ steps.container-metadata.outputs.annotations }}
           DIGEST: ${{ steps.push.outputs.digest }}
@@ -253,6 +265,7 @@ jobs:
           readarray -t lines <<< "$TAGS"; tags=(); for line in "${lines[@]}"; do tags+=(-t "$line"); done
           docker buildx imagetools create \
           "${annotations[@]}" "${tags[@]}" "ghcr.io/${GITHUB_REPOSITORY}@${DIGEST}"
+        shell: bash
       # - if: inputs.enable-push == true
       #   name: attest
       #   uses: actions/attest-build-provenance@v1
@@ -262,5 +275,6 @@ jobs:
       #     subject-name: ghcr.io/${{ github.repository }}
     strategy:
       matrix:
-        archive: ${{ needs.context.outputs.archive }}
+        archive:
+          - ${{ needs.context.outputs.archive }}
         dockerfile: ${{ fromJSON(needs.context.outputs.dockerfiles) }}
