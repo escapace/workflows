@@ -100,7 +100,7 @@ jobs:
           tar -axf "${archive}"
           printf '%s\n' "${array[@]}" | xargs rm -f
 
-          dockerfiles=()
+          declare -A array=()
 
           while read -d '' -r file; do
             directory="$(dirname "$file")"
@@ -110,18 +110,30 @@ jobs:
               "$(jq -r 'if .scripts["container:build"] | type == "string" then true else false end' "$directory/package.json")" == "true" &&
               "$(jq -r 'if has("private") then .private else false end' "$directory/package.json")" == "true" &&
               "$(jq -r 'if .name | type == "string" and startswith("@container/") then true else false end' "$directory/package.json")" == "true" ]]; then
-              dockerfiles+=("${directory}/Dockerfile")
+              name="$(jq -r '.name | sub("^@container/" ; "")' "${directory}/package.json")"
+              dockerfile="${directory}/Dockerfile"
+              array["${name}"]="${dockerfile}"
             fi
           done < <(find "." -type f -name 'package.json' -not -path '**/node_modules/**' -print0 2>/dev/null)
 
-          # Check if the array is empty
-          if [ ${#dockerfiles[@]} -eq 0 ]; then
-            dockerfiles_json="[]"
+          keys=()
+          values=()
+          for key in "${!array[@]}"; do
+            keys+=("$key")
+            values+=("${array[$key]}")
+          done
+
+          if [ ${#keys[@]} -eq 0 ]; then
+            echo "names=[]" >>"$GITHUB_OUTPUT"
           else
-            dockerfiles_json=$(printf '%s\n' "${dockerfiles[@]}" | jq -R . | jq -sc .)
+            echo "names=$(printf '%s\n' "${keys[@]}" | jq -R . | jq -sc .)" >>"$GITHUB_OUTPUT"
           fi
 
-          echo "dockerfiles=${dockerfiles_json}" >> "$GITHUB_OUTPUT"
+          if [ ${#values[@]} -eq 0 ]; then
+            echo "dockerfiles=[]" >>"$GITHUB_OUTPUT"
+          else
+            echo "dockerfiles=$(printf '%s\n' "${values[@]}" | jq -R . | jq -sc .)" >>"$GITHUB_OUTPUT"
+          fi
         shell: bash
   main:
     needs:
@@ -149,7 +161,7 @@ jobs:
             latest=false
             prefix=
             suffix=
-          images: ghcr.io/${{ github.repository_owner	}}/${{ steps.name.outputs.value }}
+          images: ghcr.io/${{ github.repository_owner	}}/${{ matrix.name }}
           tags: |
             type=match,pattern=v(.*),group=1,value=v${{ inputs.version }}
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
@@ -157,7 +169,7 @@ jobs:
             type=raw,value=latest,enable=${{ inputs.latest && inputs.prerelease == false }}
       - env:
           WORKSPACE: ${{ github.workspace }}
-        name: extract context archive
+        name: remove the checkout
         run: |
           rm -rf "${WORKSPACE}"
           mkdir -p "${WORKSPACE}"
@@ -173,14 +185,6 @@ jobs:
           readarray -t array < <(find . -type f -name '*.tgz')
           tar -xf "${ARCHIVE}"
           printf '%s\n' "${array[@]}" | xargs rm -f
-        shell: bash
-      - env:
-          DOCKERFILE: ${{ matrix.dockerfile }}
-        id: name
-        name: package name
-        run: |
-          name="$(jq -r '.name | sub("^@container/" ; "")' "$(dirname "$DOCKERFILE")/package.json")"
-          echo "value=${name}" >> "$GITHUB_OUTPUT"
         shell: bash
       - name: docker login
         uses: docker/login-action@v3
@@ -285,3 +289,4 @@ jobs:
         archive:
           - ${{ needs.context.outputs.archive }}
         dockerfile: ${{ fromJSON(needs.context.outputs.dockerfiles) }}
+        name: ${{ fromJSON(needs.context.outputs.names) }}
