@@ -41,10 +41,6 @@ on:
         description: 'whether it is a prerelease'
         required: true
         type: boolean
-      # TODO: remove ref
-      ref:
-        required: true
-        type: string
       version:
         required: true
         type: string
