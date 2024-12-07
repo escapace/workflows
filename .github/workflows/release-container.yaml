@@ -160,7 +160,7 @@ jobs:
           echo "platform=${PLATFORM}" >> "$GITHUB_OUTPUT"
           echo "os=${PLATFORM%%/*}" >> "$GITHUB_OUTPUT"
           echo "arch=${PLATFORM#*/}" >> "$GITHUB_OUTPUT"
-          echo "image=ghcr.io/${OWNER}/${NAME}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${REPOSITORY_OWNER}/${NAME}" >> "$GITHUB_OUTPUT"
           echo "cache-key=${NAME}-${PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
       - name: checkout
         uses: actions/checkout@v4
@@ -261,7 +261,7 @@ jobs:
           restore-keys: |
             cache-mounts-${{ steps.context.outputs.cache-key }}-
       - name: inject cache into docker
-        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+        uses: reproducible-containers/buildkit-cache-dance@61bd187f75f25d38e056fdd48506fac777c6ebec
         with:
           builder: ${{ steps.buildx.outputs.name }}
           cache-map: ${{ steps.dockerfile.outputs.cache-map }}
