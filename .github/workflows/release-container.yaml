@@ -80,7 +80,7 @@ jobs:
         env:
           PLATFORMS: ${{ inputs.platforms }}
         run: |
-          platforms="$(echo "${PLATFORMS}" | jq -R 'split(",") | map(gsub("^[[:space:]]+|[[:space:]]+$"; ""))')"
+          platforms="$(echo "${PLATFORMS}" | jq -c -R 'split(",") | map(gsub("^[[:space:]]+|[[:space:]]+$"; ""))')"
 
           echo "platforms=${platforms}" >> "$GITHUB_OUTPUT"
 
@@ -212,6 +212,11 @@ jobs:
           else
             echo "test=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: normalize platform pair (replace / with -)
+        id: platform
+        run: |
+          platform=${{ matrix.platform }}
+          echo "value=${platform//\//-}" >> "$GITHUB_OUTPUT"
       - name: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         id: test
@@ -222,8 +227,8 @@ jobs:
             CONTAINER_TEST=true
             ${{ inputs.build-args }}
           cache-from: |
-            type=gha
-          cache-to:
+            type=gha,scope=${{ fromJSON(matrix.package).name }}-${{ steps.platform.outputs.value }}
+          # cache-to:
           context: .
           file: ${{ fromJSON(matrix.package).dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
@@ -241,9 +246,9 @@ jobs:
           annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: ${{ inputs.build-args }}
           cache-from: |
-            type=gha
+            type=gha,scope=${{ fromJSON(matrix.package).name }}-${{ steps.platform.outputs.value}}
           cache-to: |
-            type=gha,mode=max
+            type=gha,mode=max,scope=${{ fromJSON(matrix.package).name }}-${{ steps.platform.outputs.value}}
           context: .
           file: ${{ fromJSON(matrix.package).dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
