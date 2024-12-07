@@ -128,7 +128,7 @@ jobs:
 
           echo "packages=${options}" >>"$GITHUB_OUTPUT"
   main:
-    name: ${{ fromJSON(matrix.package).name }}
+    name: ${{ fromJSON(matrix.package).name }} ${{ matrix.platform) }}
     needs:
       - context
     runs-on: ubuntu-latest
@@ -143,6 +143,25 @@ jobs:
       image-id: ${{ steps.build-and-push.outputs.imageid }}
       metadata: ${{ steps.build-and-push.outputs.metadata }}
     steps:
+      - name: context
+        id: context
+        env:
+          ARCHIVE: ${{ matrix.archive }}
+          DOCKERFILE: ${{ fromJSON(matrix.package).dockerfile }}
+          NAME: ${{ fromJSON(matrix.package).name }}
+          PLATFORM: ${{ matrix.platform }}
+          REPOSITORY_OWNER: ${{ github.repository_owner	}}
+        run: |
+          # platform pair (replace / with -)
+          echo "platform-with-dash=${PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+          echo "dockerfile=${DOCKERFILE}" >> "$GITHUB_OUTPUT"
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+          echo "platform=${PLATFORM}" >> "$GITHUB_OUTPUT"
+          echo "os=${PLATFORM%%/*}" >> "$GITHUB_OUTPUT"
+          echo "arch=${PLATFORM#*/}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${OWNER}/${NAME}" >> "$GITHUB_OUTPUT"
+          echo "cache-key=${NAME}-${PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
       - name: checkout
         uses: actions/checkout@v4
         with:
@@ -160,7 +179,7 @@ jobs:
             latest=false
             prefix=
             suffix=
-          images: ghcr.io/${{ github.repository_owner	}}/${{ fromJSON(matrix.package).name }}
+          images: ${{ steps.context.output.image }}
           tags: |
             type=match,pattern=v(.*),group=1,value=v${{ inputs.version }}
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
@@ -180,7 +199,7 @@ jobs:
       - name: extract context archive
         shell: bash
         env:
-          ARCHIVE: ${{ matrix.archive }}
+          ARCHIVE: ${{ steps.context.output.archive }}
         run: |
           readarray -t array < <(find . -type f -name '*.tgz')
           tar -xf "${ARCHIVE}"
@@ -199,11 +218,15 @@ jobs:
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
       - uses: escapace/action-dockerfile-tools@v0.1.0
-      - name: check whether there is a test stage
+      - name: inspect dockerfile
         id: dockerfile
         shell: bash
         env:
-          DOCKERFILE: ${{ fromJSON(matrix.package).dockerfile }}
+          ARCH: ${{ steps.context.output.ARCH }}
+          BUILD_ARGS: ${{ inputs.build-args }}
+          DOCKERFILE: ${{ steps.context.output.dockerfile }}
+          OS: ${{ steps.context.output.os }}
+          PLATFORM: ${{ steps.context.output.platform }}
         run: |
           stages=$(dockerfile-tools list-stages --dockerfile "${DOCKERFILE}")
 
@@ -212,11 +235,35 @@ jobs:
           else
             echo "test=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: normalize platform pair (replace / with -)
-        id: platform
-        run: |
-          platform=${{ matrix.platform }}
-          echo "value=${platform//\//-}" >> "$GITHUB_OUTPUT"
+
+          args=()
+          args+=(--arg "TARGETPLATFORM=${PLATFORM}")
+          args+=(--arg "TARGETOS=${OS}")
+          args+=(--arg "TARGETARCH=${ARCH}")
+
+          readarray -t lines <<< "$BUILD_ARGS"; ; for line in "${lines[@]}"; do args+=(--arg "$line"); done
+          docker buildx imagetools create \
+
+          cache_map="$(dockerfile-tools list-cache-mounts --dockerfile "${DOCKERFILE}" "${args[@]}" | jq -c)"
+          cache_path="$(echo "${cache_map}" | jq -c '. | keys')"
+
+          echo "cache-map=${cache_map}" >> "$GITHUB_OUTPUT"
+          echo "cache-path=${cache_path}" >> "$GITHUB_OUTPUT"
+      - name: cache
+        id: cache
+        uses: actions/cache@v3
+        with:
+          key: cache-mounts-${{ steps.context.output.cache-key }}-${{ hashFiles(steps.context.output.dockerfile) }}
+          path: |
+            ${{ join(steps.context.output.cache-path, '\n') }}
+          restore-keys: |
+            cache-mounts-${{ steps.context.output.cache-key }}-
+      - name: inject cache into docker
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-map: ${{ steps.dockerfile.outputs.cache-map }}
+          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
       - name: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         id: test
@@ -227,12 +274,12 @@ jobs:
             CONTAINER_TEST=true
             ${{ inputs.build-args }}
           cache-from: |
-            type=gha,scope=${{ fromJSON(matrix.package).name }}-${{ steps.platform.outputs.value }}
+            type=gha,scope=${{ steps.context.output.cache-key }}
           # cache-to:
           context: .
-          file: ${{ fromJSON(matrix.package).dockerfile }}
+          file: ${{ steps.context.output.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
-          platforms: ${{ matrix.platform }}
+          platforms: ${{ steps.context.output.platform }}
           provenance: false
           push: false
           sbom: false
@@ -246,11 +293,11 @@ jobs:
           annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: ${{ inputs.build-args }}
           cache-from: |
-            type=gha,scope=${{ fromJSON(matrix.package).name }}-${{ steps.platform.outputs.value}}
+            type=gha,scope=${{ steps.context.output.cache-key }}
           cache-to: |
-            type=gha,mode=max,scope=${{ fromJSON(matrix.package).name }}-${{ steps.platform.outputs.value}}
+            type=gha,mode=max,scope=${{ steps.context.output.cache-key }}
           context: .
-          file: ${{ fromJSON(matrix.package).dockerfile }}
+          file: ${{ steps.context.output.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
           platforms: ${{ inputs.platforms }}
           provenance: false
@@ -277,7 +324,7 @@ jobs:
         env:
           ANNOTATIONS: ${{ steps.container-metadata.outputs.annotations }}
           DIGEST: ${{ steps.push.outputs.digest }}
-          SOURCE: ghcr.io/${{ github.repository_owner	}}/${{ fromJSON(matrix.package).name }}
+          SOURCE: ${{ steps.context.output.image }}
           TAGS: ${{ steps.container-metadata.outputs.tags }}
         run: |
           readarray -t lines <<< "$ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
