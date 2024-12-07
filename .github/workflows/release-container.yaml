@@ -217,7 +217,8 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
-      - uses: escapace/action-dockerfile-tools@v0.1.0
+      - name: install dockerfile-tools
+        uses: escapace/action-dockerfile-tools@v0.1.0
       - name: inspect dockerfile
         id: dockerfile
         shell: bash
@@ -257,7 +258,7 @@ jobs:
         with:
           key: cache-mounts-${{ steps.context.outputs.cache-key }}-${{ hashFiles(steps.context.outputs.dockerfile) }}
           path: |
-            ${{ steps.context.outputs.cache-path }}
+            ${{ steps.dockerfile.outputs.cache-path }}
           restore-keys: |
             cache-mounts-${{ steps.context.outputs.cache-key }}-
       - name: inject cache into docker
@@ -301,7 +302,7 @@ jobs:
           context: .
           file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
-          platforms: ${{ inputs.platforms }}
+          platforms: ${{ steps.context.outputs.platform }}
           provenance: false
           push: ${{ inputs.enable-push }}
           sbom: false
