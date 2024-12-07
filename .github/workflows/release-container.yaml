@@ -241,7 +241,7 @@ jobs:
           args+=(--arg "TARGETOS=${OS}")
           args+=(--arg "TARGETARCH=${ARCH}")
 
-          readarray -t lines <<< "$BUILD_ARGS"; ; for line in "${lines[@]}"; do args+=(--arg "$line"); done
+          readarray -t lines <<< "$BUILD_ARGS"; for line in "${lines[@]}"; do args+=(--arg "$line"); done
           docker buildx imagetools create \
 
           cache_map="$(dockerfile-tools list-cache-mounts --dockerfile "${DOCKERFILE}" "${args[@]}" | jq -c)"
