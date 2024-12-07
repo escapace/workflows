@@ -319,12 +319,14 @@ jobs:
       #     subject-digest: ${{ steps.push.outputs.digest }}
       #     subject-name: ${{ steps.context.outputs.image }}
       - name: save digests
+        if: inputs.enable-push == true
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           mkdir -p /tmp/digests
           touch "/tmp/digests/${DIGEST#sha256:}"
       - name: upload digests
+        if: inputs.enable-push == true
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
