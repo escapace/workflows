@@ -247,7 +247,7 @@ jobs:
         id: cache
         uses: actions/cache@v3
         with:
-          key: cache-mounts-${{ steps.context.outputs.cache-key }}-${{ hashFiles(steps.context.outputs.dockerfile, '**/pnpm-lock.yaml', "**/uv.lock", '**/go.sum', '**/Cargo.lock') }}
+          key: cache-mounts-${{ steps.context.outputs.cache-key }}-${{ hashFiles(steps.context.outputs.dockerfile, '**/pnpm-lock.yaml', '**/uv.lock', '**/go.sum', '**/Cargo.lock') }}
           path: |
             ${{ steps.dockerfile.outputs.cache-path }}
           restore-keys: |
