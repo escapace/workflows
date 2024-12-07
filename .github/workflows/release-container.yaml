@@ -320,7 +320,7 @@ jobs:
       #     subject-name: ${{ steps.context.outputs.image }}
       - name: save digests
         env:
-          DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           mkdir -p /tmp/digests
           touch "/tmp/digests/${DIGEST#sha256:}"
