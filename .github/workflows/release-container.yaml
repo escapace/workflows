@@ -179,7 +179,7 @@ jobs:
             latest=false
             prefix=
             suffix=
-          images: ${{ steps.context.output.image }}
+          images: ${{ steps.context.outputs.image }}
           tags: |
             type=match,pattern=v(.*),group=1,value=v${{ inputs.version }}
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
@@ -199,7 +199,7 @@ jobs:
       - name: extract context archive
         shell: bash
         env:
-          ARCHIVE: ${{ steps.context.output.archive }}
+          ARCHIVE: ${{ steps.context.outputs.archive }}
         run: |
           readarray -t array < <(find . -type f -name '*.tgz')
           tar -xf "${ARCHIVE}"
@@ -222,11 +222,11 @@ jobs:
         id: dockerfile
         shell: bash
         env:
-          ARCH: ${{ steps.context.output.ARCH }}
+          ARCH: ${{ steps.context.outputs.ARCH }}
           BUILD_ARGS: ${{ inputs.build-args }}
-          DOCKERFILE: ${{ steps.context.output.dockerfile }}
-          OS: ${{ steps.context.output.os }}
-          PLATFORM: ${{ steps.context.output.platform }}
+          DOCKERFILE: ${{ steps.context.outputs.dockerfile }}
+          OS: ${{ steps.context.outputs.os }}
+          PLATFORM: ${{ steps.context.outputs.platform }}
         run: |
           stages=$(dockerfile-tools list-stages --dockerfile "${DOCKERFILE}")
 
@@ -253,11 +253,11 @@ jobs:
         id: cache
         uses: actions/cache@v3
         with:
-          key: cache-mounts-${{ steps.context.output.cache-key }}-${{ hashFiles(steps.context.output.dockerfile) }}
+          key: cache-mounts-${{ steps.context.outputs.cache-key }}-${{ hashFiles(steps.context.outputs.dockerfile) }}
           path: |
-            ${{ join(fromJSON(steps.context.output.cache-path), '\n') }}
+            ${{ join(fromJSON(steps.context.outputs.cache-path), '\n') }}
           restore-keys: |
-            cache-mounts-${{ steps.context.output.cache-key }}-
+            cache-mounts-${{ steps.context.outputs.cache-key }}-
       - name: inject cache into docker
         uses: reproducible-containers/buildkit-cache-dance@v3.1.0
         with:
@@ -274,12 +274,12 @@ jobs:
             CONTAINER_TEST=true
             ${{ inputs.build-args }}
           cache-from: |
-            type=gha,scope=${{ steps.context.output.cache-key }}
+            type=gha,scope=${{ steps.context.outputs.cache-key }}
           # cache-to:
           context: .
-          file: ${{ steps.context.output.dockerfile }}
+          file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
-          platforms: ${{ steps.context.output.platform }}
+          platforms: ${{ steps.context.outputs.platform }}
           provenance: false
           push: false
           sbom: false
@@ -293,11 +293,11 @@ jobs:
           annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: ${{ inputs.build-args }}
           cache-from: |
-            type=gha,scope=${{ steps.context.output.cache-key }}
+            type=gha,scope=${{ steps.context.outputs.cache-key }}
           cache-to: |
-            type=gha,mode=max,scope=${{ steps.context.output.cache-key }}
+            type=gha,mode=max,scope=${{ steps.context.outputs.cache-key }}
           context: .
-          file: ${{ steps.context.output.dockerfile }}
+          file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
           platforms: ${{ inputs.platforms }}
           provenance: false
@@ -324,7 +324,7 @@ jobs:
         env:
           ANNOTATIONS: ${{ steps.container-metadata.outputs.annotations }}
           DIGEST: ${{ steps.push.outputs.digest }}
-          SOURCE: ${{ steps.context.output.image }}
+          SOURCE: ${{ steps.context.outputs.image }}
           TAGS: ${{ steps.container-metadata.outputs.tags }}
         run: |
           readarray -t lines <<< "$ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
