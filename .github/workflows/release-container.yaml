@@ -249,7 +249,7 @@ jobs:
 
           {
             echo 'cache-path<<EOF'
-            echo "${cache_map}" | jq -r '. | keys | join("\\n")'
+            echo "${cache_map}" | jq -r '. | keys | join("\n")'
             echo EOF
           } >> "$GITHUB_OUTPUT"
       - name: cache
