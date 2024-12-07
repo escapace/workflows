@@ -128,7 +128,7 @@ jobs:
 
           echo "packages=${options}" >>"$GITHUB_OUTPUT"
   main:
-    name: ${{ fromJSON(matrix.package).name }} ${{ matrix.platform) }}
+    name: ${{ fromJSON(matrix.package).name }} ${{ matrix.platform }}
     needs:
       - context
     runs-on: ubuntu-latest
