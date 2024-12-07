@@ -255,7 +255,7 @@ jobs:
         with:
           key: cache-mounts-${{ steps.context.output.cache-key }}-${{ hashFiles(steps.context.output.dockerfile) }}
           path: |
-            ${{ join(steps.context.output.cache-path, '\n') }}
+            ${{ join(fromJSON(steps.context.output.cache-path), '\n') }}
           restore-keys: |
             cache-mounts-${{ steps.context.output.cache-key }}-
       - name: inject cache into docker
