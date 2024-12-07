@@ -244,10 +244,13 @@ jobs:
           readarray -t lines <<< "$BUILD_ARGS"; for line in "${lines[@]}"; do args+=(--arg "$line"); done
 
           cache_map="$(dockerfile-tools list-cache-mounts --dockerfile "${DOCKERFILE}" "${args[@]}" | jq -c)"
-          cache_path="$(echo "${cache_map}" | jq -c '. | keys')"
-
           echo "cache-map=${cache_map}" >> "$GITHUB_OUTPUT"
-          echo "cache-path=${cache_path}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo 'cache-path<<EOF'
+            echo "${cache_map}" | jq -r '. | keys | join("\\n")'
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
       - name: cache
         id: cache
         uses: actions/cache@v3
