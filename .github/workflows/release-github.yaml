@@ -18,9 +18,9 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-      - env:
+      - name: github release
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        name: github release
         run: |
           echo "${{ inputs.changelog }}" > changelog.md
 

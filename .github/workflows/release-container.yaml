@@ -64,19 +64,26 @@ on:
 
 jobs:
   context:
+    runs-on: ubuntu-latest
     outputs:
       archive: ${{ steps.context.outputs.archive }}
-      dockerfiles: ${{ steps.context.outputs.dockerfiles }}
-      names: ${{ steps.context.outputs.names }}
-    runs-on: ubuntu-latest
+      packages: ${{ steps.context.outputs.packages }}
+      platforms: ${{ steps.context.outputs.platforms }}
     steps:
       - name: download context archive
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
-      - id: context
-        name: extract context archive
+      - name: extract context archive
+        id: context
+        shell: bash
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
         run: |
+          platforms="$(echo "${PLATFORMS}" | jq -R 'split(",") | map(gsub("^[[:space:]]+|[[:space:]]+$"; ""))')"
+
+          echo "platforms=${platforms}" >> "$GITHUB_OUTPUT"
+
           archive=""
 
           readarray -t archives < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**')
@@ -117,34 +124,24 @@ jobs:
             fi
           done < <(find "." -type f -name 'package.json' -not -path '**/node_modules/**' -print0 2>/dev/null)
 
-          keys=()
-          values=()
-          for key in "${!packages[@]}"; do
-            keys+=("$key")
-            values+=("${packages[$key]}")
-          done
+          options="$(for i in "${!packages[@]}"; do echo "$i" && echo "${packages[$i]}"; done | jq -c -n -R 'reduce inputs as $i ([]; . + [[ $i, input ]]) | map({ name: .[0], dockerfile: .[1] } | tostring)')"
 
-          if [ ${#keys[@]} -eq 0 ]; then
-            echo "names=[]" >>"$GITHUB_OUTPUT"
-          else
-            echo "names=$(printf '%s\n' "${keys[@]}" | jq -R . | jq -sc .)" >>"$GITHUB_OUTPUT"
-          fi
-
-          if [ ${#values[@]} -eq 0 ]; then
-            echo "dockerfiles=[]" >>"$GITHUB_OUTPUT"
-          else
-            echo "dockerfiles=$(printf '%s\n' "${values[@]}" | jq -R . | jq -sc .)" >>"$GITHUB_OUTPUT"
-          fi
-        shell: bash
+          echo "packages=${options}" >>"$GITHUB_OUTPUT"
   main:
-    name: ${{ matrix.name }}
+    name: ${{ fromJSON(matrix.package).name }}
     needs:
       - context
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        archive:
+          - ${{ needs.context.outputs.archive }}
+        package: ${{ fromJSON(needs.context.outputs.packages) }}
+        platform: ${{ fromJSON(needs.context.outputs.platforms) }}
     outputs:
       digest: ${{ steps.build-and-push.outputs.digest }}
       image-id: ${{ steps.build-and-push.outputs.imageid }}
       metadata: ${{ steps.build-and-push.outputs.metadata }}
-    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -152,10 +149,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.ref }}
-      - env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.annotations-levels }}
+      - name: container metadata
         id: container-metadata
-        name: container metadata
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.annotations-levels }}
         uses: docker/metadata-action@v5
         with:
           context: git
@@ -163,31 +160,31 @@ jobs:
             latest=false
             prefix=
             suffix=
-          images: ghcr.io/${{ github.repository_owner	}}/${{ matrix.name }}
+          images: ghcr.io/${{ github.repository_owner	}}/${{ fromJSON(matrix.package).name }}
           tags: |
             type=match,pattern=v(.*),group=1,value=v${{ inputs.version }}
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
             type=match,pattern=v(\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
             type=raw,value=latest,enable=${{ inputs.latest && inputs.prerelease == false }}
-      - env:
+      - name: remove the checkout
+        shell: bash
+        env:
           WORKSPACE: ${{ github.workspace }}
-        name: remove the checkout
         run: |
           rm -rf "${WORKSPACE}"
           mkdir -p "${WORKSPACE}"
-        shell: bash
       - name: download context archive
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
-      - env:
+      - name: extract context archive
+        shell: bash
+        env:
           ARCHIVE: ${{ matrix.archive }}
-        name: extract context archive
         run: |
           readarray -t array < <(find . -type f -name '*.tgz')
           tar -xf "${ARCHIVE}"
           printf '%s\n' "${array[@]}" | xargs rm -f
-        shell: bash
       - name: docker login
         uses: docker/login-action@v3
         with:
@@ -196,15 +193,17 @@ jobs:
           username: ${{ github.actor }}
       - name: setup qemu
         uses: docker/setup-qemu-action@v3
-      - id: buildx
-        name: docker buildx
+      - name: docker buildx
+        id: buildx
         uses: docker/setup-buildx-action@v3
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
       - uses: escapace/action-dockerfile-tools@v0.1.0
-      - env:
-          DOCKERFILE: ${{ matrix.dockerfile }}
+      - name: check whether there is a test stage
         id: dockerfile
+        shell: bash
+        env:
+          DOCKERFILE: ${{ fromJSON(matrix.package).dockerfile }}
         run: |
           stages=$(dockerfile-tools list-stages --dockerfile "${DOCKERFILE}")
 
@@ -213,10 +212,9 @@ jobs:
           else
             echo "test=false" >> "$GITHUB_OUTPUT"
           fi
-        shell: bash
-      - id: test
+      - name: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
-        name: test
+        id: test
         uses: docker/build-push-action@v5
         with:
           annotations: ${{ steps.container-metadata.outputs.annotations }}
@@ -225,18 +223,19 @@ jobs:
             ${{ inputs.build-args }}
           cache-from: |
             type=gha
+          cache-to:
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: ${{ fromJSON(matrix.package).dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
-          platforms: ${{ inputs.platforms }}
+          platforms: ${{ matrix.platform }}
           provenance: false
           push: false
           sbom: false
           tags: ${{ steps.container-metadata.outputs.tags }}
           target: test
-      - id: push
+      - name: (re)build and push
         if: inputs.enable-push == true
-        name: (re)build and push
+        id: push
         uses: docker/build-push-action@v5
         with:
           annotations: ${{ steps.container-metadata.outputs.annotations }}
@@ -246,39 +245,40 @@ jobs:
           cache-to: |
             type=gha,mode=max
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: ${{ fromJSON(matrix.package).dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
           platforms: ${{ inputs.platforms }}
           provenance: false
           push: ${{ inputs.enable-push }}
           sbom: false
           tags: ${{ steps.container-metadata.outputs.tags }}
-      - if: inputs.enable-cosign == true && inputs.enable-push == true
-        name: install cosign
+      - name: install cosign
+        if: inputs.enable-cosign == true && inputs.enable-push == true
         uses: sigstore/cosign-installer@v3.7.0
         # with:
         #   cosign-release: 'v2.1.1'
-      - env:
+      - name: sign the docker image
+        if: inputs.enable-cosign == true && inputs.enable-push == true
+        env:
           DIGEST: ${{ steps.push.outputs.digest }}
           # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
           TAGS: ${{ steps.container-metadata.outputs.tags }}
-        if: inputs.enable-cosign == true && inputs.enable-push == true
-        name: sign the docker image
         run: |
           echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
       # adapted from https://docs.docker.com/build/ci/github-actions/multi-platform/
-      - env:
+      - name: create manifest list and push
+        if: inputs.enable-push == true
+        shell: bash
+        env:
           ANNOTATIONS: ${{ steps.container-metadata.outputs.annotations }}
           DIGEST: ${{ steps.push.outputs.digest }}
+          SOURCE: ghcr.io/${{ github.repository_owner	}}/${{ fromJSON(matrix.package).name }}
           TAGS: ${{ steps.container-metadata.outputs.tags }}
-        if: inputs.enable-push == true
-        name: create manifest list and push
         run: |
           readarray -t lines <<< "$ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
           readarray -t lines <<< "$TAGS"; tags=(); for line in "${lines[@]}"; do tags+=(-t "$line"); done
           docker buildx imagetools create \
-          "${annotations[@]}" "${tags[@]}" "ghcr.io/${GITHUB_REPOSITORY}@${DIGEST}"
-        shell: bash
+          "${annotations[@]}" "${tags[@]}" "${SOURCE}@${DIGEST}"
       # - if: inputs.enable-push == true
       #   name: attest
       #   uses: actions/attest-build-provenance@v1
@@ -286,9 +286,3 @@ jobs:
       #     push-to-registry: true
       #     subject-digest: ${{ steps.push.outputs.digest }}
       #     subject-name: ghcr.io/${{ github.repository }}
-    strategy:
-      matrix:
-        archive:
-          - ${{ needs.context.outputs.archive }}
-        dockerfile: ${{ fromJSON(needs.context.outputs.dockerfiles) }}
-        name: ${{ fromJSON(needs.context.outputs.names) }}

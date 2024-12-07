@@ -44,8 +44,8 @@ jobs:
         with:
           run_install: false
           version: ${{ inputs.pnpm-version }}
-      - id: pnpm-store-path
-        name: get pnpm store directory
+      - name: get pnpm store directory
+        id: pnpm-store-path
         run: echo "value=$(pnpm store path)" >> $GITHUB_OUTPUT
       - name: pnpm cache
         uses: actions/cache@v4

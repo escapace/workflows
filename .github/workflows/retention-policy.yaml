@@ -15,14 +15,14 @@ permissions:
 
 jobs:
   main:
-    concurrency: retention-policy
     runs-on: ubuntu-latest
+    concurrency: retention-policy
     steps:
-      - id: name
-        name: name
+      - name: name
+        id: name
+        shell: bash
         run: |
           echo "value=${GITHUB_REPOSITORY#*/}" >> $GITHUB_OUTPUT
-        shell: bash
       - if: inputs.enable-github-packages-container-registry
         uses: actions/delete-package-versions@v5
         with:

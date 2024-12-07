@@ -40,10 +40,10 @@ jobs:
         run: |
           npm install -g npm
           npm --version
-      - env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: publish to github packages npm registry
         if: inputs.enable-github-packages-npm-registry
-        name: publish to github packages npm registry
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat << EOF > "$HOME/.npmrc"
             //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
@@ -56,10 +56,10 @@ jobs:
               npm publish "${file}"
             fi
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
-      - env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: publish to npm registry
         if: inputs.enable-npm-registry
-        name: publish to npm registry
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cat << EOF > "$HOME/.npmrc"
             //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}

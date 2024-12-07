@@ -34,6 +34,9 @@ on:
 
 jobs:
   main:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       changelog: ${{ steps.action-context.outputs.changelog }}
       commitish: ${{ steps.action-context.outputs.commitish }}
@@ -45,19 +48,16 @@ jobs:
       prerelease: ${{ fromJSON(steps.action-context.outputs.prerelease) }}
       ref: ${{ steps.ref.outputs.value }}
       version: ${{ steps.action-context.outputs.version }}
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
     steps:
-      - id: ref
-        name: ref
+      - name: ref
+        id: ref
+        shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             echo "value=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
           else
             echo "value=${GITHUB_REF}" >> $GITHUB_OUTPUT
           fi
-        shell: bash
       - name: checkout
         uses: actions/checkout@v4
         with:

@@ -48,10 +48,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node-version }}
-      - env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: write .npmrc
         if: inputs.enable-github-packages-npm-registry
-        name: write .npmrc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat << EOF > "$HOME/.npmrc"
             //npm.pkg.github.com/:_authToken=$GITHUB_TOKEN
@@ -63,8 +63,8 @@ jobs:
         with:
           run_install: false
           version: ${{ inputs.pnpm-version }}
-      - id: pnpm-store-path
-        name: get pnpm store directory
+      - name: get pnpm store directory
+        id: pnpm-store-path
         run: echo "value=$(pnpm store path)" >> $GITHUB_OUTPUT
       - name: pnpm cache
         uses: actions/cache@v4
@@ -81,16 +81,16 @@ jobs:
         run: pnpm run typecheck
       - name: test
         run: pnpm run test
-      - if: inputs.enable-codecov
-        name: code coverage
+      - name: code coverage
+        if: inputs.enable-codecov
         uses: codecov/codecov-action@v5.0.7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-      - if: inputs.enable-artifact-upload
-        name: pnpm pack
+      - name: pnpm pack
+        if: inputs.enable-artifact-upload
         run: pnpm run pack --version ${{ inputs.version }}
-      - if: inputs.enable-artifact-upload
-        name: upload artifact
+      - name: upload artifact
+        if: inputs.enable-artifact-upload
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
