@@ -268,8 +268,9 @@ jobs:
             CONTAINER_TEST=true
             ${{ inputs.build-args }}
           cache-from: |
-            type=gha,scope=${{ steps.context.outputs.cache-key }}
-          # cache-to:
+            type=gha,scope=test-${{ steps.context.outputs.cache-key }}
+          cache-to: |
+            type=gha,scope=test-${{ steps.context.outputs.cache-key }}
           context: .
           file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
@@ -288,6 +289,7 @@ jobs:
           build-args: ${{ inputs.build-args }}
           cache-from: |
             type=gha,scope=${{ steps.context.outputs.cache-key }}
+            type=gha,scope=test-${{ steps.context.outputs.cache-key }}
           cache-to: |
             type=gha,mode=max,scope=${{ steps.context.outputs.cache-key }}
           context: .
