@@ -1,10 +1,6 @@
 on:
   workflow_call:
     inputs:
-      annotations-levels:
-        default: index
-        required: false
-        type: string
       artifact-name:
         default: package
         description: 'artifact name'
@@ -339,7 +335,7 @@ jobs:
       - name: container metadata
         id: container-metadata
         env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index,manifest
         uses: docker/metadata-action@v5
         with:
           flavor: |
