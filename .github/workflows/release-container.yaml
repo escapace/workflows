@@ -280,7 +280,7 @@ jobs:
           provenance: false
           push: false
           sbom: false
-          tags: ${{ steps.container-metadata.outputs.tags }}
+          # tags: ${{ steps.container-metadata.outputs.tags }}
           target: test
       - name: (re)build and push
         if: inputs.enable-push == true
@@ -297,11 +297,12 @@ jobs:
           context: .
           file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
+          outputs: type=image,name=${{ steps.context.outputs.image }},push-by-digest=true,name-canonical=true,push=${{ inputs.enable-push }}
           platforms: ${{ steps.context.outputs.platform }}
           provenance: false
-          push: ${{ inputs.enable-push }}
           sbom: false
-          tags: ${{ steps.container-metadata.outputs.tags }}
+          # push: ${{ inputs.enable-push }}
+          # tags: ${{ steps.container-metadata.outputs.tags }}
       - name: install cosign
         if: inputs.enable-cosign == true && inputs.enable-push == true
         uses: sigstore/cosign-installer@v3.7.0
@@ -338,10 +339,11 @@ jobs:
           path: /tmp/digests/*
           retention-days: 1
 
-  manifest:
-    name: ${{ fromJSON(matrix.package).name }} manifest
+  index:
+    name: ${{ fromJSON(matrix.package).name }} index
     if: inputs.enable-push == true
     needs:
+      - context
       - main
     runs-on: ubuntu-latest
     strategy:
@@ -366,7 +368,7 @@ jobs:
       - name: container metadata
         id: container-metadata
         env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.annotations-levels }}
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
         uses: docker/metadata-action@v5
         with:
           flavor: |
@@ -386,7 +388,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
       # adapted from https://docs.docker.com/build/ci/github-actions/multi-platform/
-      - name: create manifest and push
+      - name: create index and push
         working-directory: /tmp/digests
         shell: bash
         env:
@@ -396,5 +398,5 @@ jobs:
         run: |
           readarray -t lines <<< "$ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
           readarray -t lines <<< "$TAGS"; tags=(); for line in "${lines[@]}"; do tags+=(-t "$line"); done
-          docker buildx imagetools create \
+          docker buildx imagetools create --prefer-index \
           "${annotations[@]}" "${tags[@]}" $(printf "${IMAGE}@sha256:%s " *)
