@@ -204,6 +204,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
       - name: setup qemu
+        # TODO: limit platforms
         uses: docker/setup-qemu-action@v3
       - name: docker buildx
         id: buildx
@@ -263,7 +264,7 @@ jobs:
       - name: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         id: test
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           # annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: |
@@ -285,7 +286,7 @@ jobs:
       - name: (re)build and push
         if: inputs.enable-push == true
         id: push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           # annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: ${{ inputs.build-args }}
