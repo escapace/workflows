@@ -335,6 +335,7 @@ jobs:
           retention-days: 1
 
   manifest:
+    name: ${{ fromJSON(matrix.package).name }} manifest
     if: inputs.enable-push == true
     needs:
       - main
