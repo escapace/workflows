@@ -164,8 +164,8 @@ jobs:
           echo "cache-key=${NAME}-${PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
       - name: container metadata
         id: container-metadata
-        env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest
+        # env:
+        #   DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest
         uses: docker/metadata-action@v5
         with:
           flavor: |
@@ -266,7 +266,6 @@ jobs:
         id: test
         uses: docker/build-push-action@v6
         with:
-          # annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: |
             CONTAINER_TEST=true
             ${{ inputs.build-args }}
@@ -278,17 +277,17 @@ jobs:
           file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
           platforms: ${{ steps.context.outputs.platform }}
-          provenance: false
           push: false
-          sbom: false
-          # tags: ${{ steps.container-metadata.outputs.tags }}
           target: test
+          # annotations: ${{ steps.container-metadata.outputs.annotations }}
+          # provenance: false
+          # sbom: false
+          # tags: ${{ steps.container-metadata.outputs.tags }}
       - name: (re)build and push
         if: inputs.enable-push == true
         id: push
         uses: docker/build-push-action@v6
         with:
-          # annotations: ${{ steps.container-metadata.outputs.annotations }}
           build-args: ${{ inputs.build-args }}
           cache-from: |
             type=gha,scope=${{ steps.context.outputs.cache-key }}
@@ -300,30 +299,11 @@ jobs:
           labels: ${{ steps.container-metadata.outputs.labels }}
           outputs: type=image,name=${{ steps.context.outputs.image }},push-by-digest=true,name-canonical=true,push=${{ inputs.enable-push }}
           platforms: ${{ steps.context.outputs.platform }}
-          provenance: false
-          sbom: false
+          # annotations: ${{ steps.container-metadata.outputs.annotations }}
+          # provenance: false
+          # sbom: false
           # push: ${{ inputs.enable-push }}
           # tags: ${{ steps.container-metadata.outputs.tags }}
-      - name: install cosign
-        if: inputs.enable-cosign == true && inputs.enable-push == true
-        uses: sigstore/cosign-installer@v3.7.0
-        # with:
-        #   cosign-release: 'v2.1.1'
-      - name: sign the docker image
-        if: inputs.enable-cosign == true && inputs.enable-push == true
-        env:
-          DIGEST: ${{ steps.push.outputs.digest }}
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-          TAGS: ${{ steps.container-metadata.outputs.tags }}
-        run: |
-          echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
-      # - name: provenance
-      #   if: inputs.enable-provenance-attestation == true && inputs.enable-push == true
-      #   uses: actions/attest-build-provenance@v1
-      #   with:
-      #     push-to-registry: true
-      #     subject-digest: ${{ steps.push.outputs.digest }}
-      #     subject-name: ${{ steps.context.outputs.image }}
       - name: save digests
         if: inputs.enable-push == true
         env:
@@ -392,12 +372,48 @@ jobs:
       - name: create index and push
         working-directory: /tmp/digests
         shell: bash
+        run: |
+          readarray -t lines <<< "$DOCKER_METADATA_OUTPUT_ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
+          docker buildx imagetools create \
+            "${annotations[@]}" \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ steps.context.outputs.image }}@sha256:%s ' *)
+      - name: share manifest digest
+        id: manifest-digest
+        shell: bash
         env:
-          ANNOTATIONS: ${{ steps.container-metadata.outputs.annotations }}
           IMAGE: ${{ steps.context.outputs.image }}
+        # To sign the manifest, we need it's digest. Unfortunately "docker
+        # buildx imagetools create" does not (yet) have a clean way of sharing
+        # the digest of the manifest it creates (see docker/buildx#2407), so
+        # we use a separate command to retrieve it.
+        # imagetools inspect [TAG] --format '{{json .Manifest}}' gives us
+        # the machine readable JSON description of the manifest, and the
+        # jq command extracts the digest from this. The digest is then
+        # sent to the Github step output file for sharing with other steps.
+        run: |
+          digest="$(
+            docker buildx imagetools inspect \
+              "${IMAGE}:${DOCKER_METADATA_OUTPUT_VERSION}" \
+              --format '{{json .Manifest}}' \
+            | jq -r '.digest'
+          )"
+          echo "value=${digest}" >> "$GITHUB_OUTPUT"
+      - name: install cosign
+        if: inputs.enable-cosign == true && inputs.enable-push == true
+        uses: sigstore/cosign-installer@v3.7.0
+      - name: sign the index
+        if: inputs.enable-cosign == true && inputs.enable-push == true
+        env:
+          DIGEST: ${{ steps.manifest-digest.outputs.value }}
+          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
           TAGS: ${{ steps.container-metadata.outputs.tags }}
         run: |
-          readarray -t lines <<< "$ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
-          readarray -t lines <<< "$TAGS"; tags=(); for line in "${lines[@]}"; do tags+=(-t "$line"); done
-          docker buildx imagetools create \
-          "${annotations[@]}" "${tags[@]}" $(printf "${IMAGE}@sha256:%s " *)
+          echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+      # - name: provenance
+      #   if: inputs.enable-provenance-attestation == true && inputs.enable-push == true
+      #   uses: actions/attest-build-provenance@v1
+      #   with:
+      #     push-to-registry: true
+      #     subject-digest: ${{ steps.push.outputs.digest }}
+      #     subject-name: ${{ steps.context.outputs.image }}
