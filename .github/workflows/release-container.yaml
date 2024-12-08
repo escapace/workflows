@@ -132,6 +132,9 @@ jobs:
     needs:
       - context
     runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILD_RECORD_UPLOAD: false
+      DOCKER_BUILD_SUMMARY: false
     strategy:
       matrix:
         archive:
@@ -279,10 +282,6 @@ jobs:
           platforms: ${{ steps.context.outputs.platform }}
           push: false
           target: test
-          # annotations: ${{ steps.container-metadata.outputs.annotations }}
-          # provenance: false
-          # sbom: false
-          # tags: ${{ steps.container-metadata.outputs.tags }}
       - name: (re)build and push
         if: inputs.enable-push == true
         id: push
@@ -299,11 +298,6 @@ jobs:
           labels: ${{ steps.container-metadata.outputs.labels }}
           outputs: type=image,name=${{ steps.context.outputs.image }},push-by-digest=true,name-canonical=true,push=${{ inputs.enable-push }}
           platforms: ${{ steps.context.outputs.platform }}
-          # annotations: ${{ steps.container-metadata.outputs.annotations }}
-          # provenance: false
-          # sbom: false
-          # push: ${{ inputs.enable-push }}
-          # tags: ${{ steps.container-metadata.outputs.tags }}
       - name: save digests
         if: inputs.enable-push == true
         env:
@@ -399,21 +393,21 @@ jobs:
             | jq -r '.digest'
           )"
           echo "value=${digest}" >> "$GITHUB_OUTPUT"
-      - name: install cosign
+      # - name: install cosign
+      #   if: inputs.enable-cosign == true && inputs.enable-push == true
+      #   uses: sigstore/cosign-installer@v3.7.0
+      # - name: sign the index
+      #   if: inputs.enable-cosign == true && inputs.enable-push == true
+      #   env:
+      #     DIGEST: ${{ steps.manifest-digest.outputs.value }}
+      #     # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
+      #     TAGS: ${{ steps.container-metadata.outputs.tags }}
+      #   run: |
+      #     echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+      - name: provenance
         if: inputs.enable-cosign == true && inputs.enable-push == true
-        uses: sigstore/cosign-installer@v3.7.0
-      - name: sign the index
-        if: inputs.enable-cosign == true && inputs.enable-push == true
-        env:
-          DIGEST: ${{ steps.manifest-digest.outputs.value }}
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-          TAGS: ${{ steps.container-metadata.outputs.tags }}
-        run: |
-          echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
-      # - name: provenance
-      #   if: inputs.enable-provenance-attestation == true && inputs.enable-push == true
-      #   uses: actions/attest-build-provenance@v1
-      #   with:
-      #     push-to-registry: true
-      #     subject-digest: ${{ steps.push.outputs.digest }}
-      #     subject-name: ${{ steps.context.outputs.image }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          push-to-registry: true
+          subject-digest: ${{ steps.manifest-digest.outputs.value }}
+          subject-name: ${{ steps.context.outputs.image }}
