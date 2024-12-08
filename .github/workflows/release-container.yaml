@@ -59,6 +59,8 @@ on:
 #   packages: write
 #   id-token: write
 
+# TODO: BUILDKIT_MULTI_PLATFORM
+
 jobs:
   context:
     runs-on: ubuntu-latest
@@ -163,7 +165,7 @@ jobs:
       - name: container metadata
         id: container-metadata
         env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: ${{ inputs.annotations-levels }}
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest
         uses: docker/metadata-action@v5
         with:
           flavor: |
