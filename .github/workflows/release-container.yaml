@@ -73,7 +73,7 @@ jobs:
         id: context
         shell: bash
         env:
-          PLATFORRRMS: ${{ inputs.platforms }}
+          PLATFORMS: ${{ inputs.platforms }}
         run: |
           platforms="$(echo "${PLATFORMS}" | jq -c -R 'split(",") | map(gsub("^[[:space:]]+|[[:space:]]+$"; ""))')"
 
