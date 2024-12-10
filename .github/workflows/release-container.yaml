@@ -73,7 +73,7 @@ jobs:
         id: context
         shell: bash
         env:
-          PLATFORMS: ${{ inputs.platforms }}
+          PLATFORRRMS: ${{ inputs.platforms }}
         run: |
           platforms="$(echo "${PLATFORMS}" | jq -c -R 'split(",") | map(gsub("^[[:space:]]+|[[:space:]]+$"; ""))')"
 
@@ -137,10 +137,10 @@ jobs:
           - ${{ needs.context.outputs.archive }}
         package: ${{ fromJSON(needs.context.outputs.packages) }}
         platform: ${{ fromJSON(needs.context.outputs.platforms) }}
-    outputs:
-      digest: ${{ steps.build-and-push.outputs.digest }}
-      image-id: ${{ steps.build-and-push.outputs.imageid }}
-      metadata: ${{ steps.build-and-push.outputs.metadata }}
+    # outputs:
+    #   digest: ${{ steps.push.outputs.digest }}
+    #   image-id: ${{ steps.push.outputs.imageid }}
+    #   metadata: ${{ steps.push.outputs.metadata }}
     steps:
       - name: context
         id: context
