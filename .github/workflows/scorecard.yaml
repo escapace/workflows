@@ -1,16 +1,15 @@
 on:
   workflow_call:
 
-permissions:
-  actions: read
-  contents: read
-  id-token: write
-  security-events: write
-
 jobs:
   analysis:
     name: scorecard
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      security-events: write
     steps:
       - name: checkout
         uses: actions/checkout@v4
