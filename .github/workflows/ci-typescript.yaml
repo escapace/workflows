@@ -5,11 +5,19 @@ on:
         default: package
         required: false
         type: string
+      codeql-languages:
+        default: javascript-typescript
+        required: false
+        type: string
       enable-artifact-upload:
         default: false
         required: false
         type: boolean
       enable-codecov:
+        default: false
+        required: false
+        type: boolean
+      enable-codeql:
         default: false
         required: false
         type: boolean
@@ -31,10 +39,6 @@ on:
         type: string
     secrets:
       CODECOV_TOKEN:
-
-permissions:
-  contents: read
-  packages: read
 
 jobs:
   main:
@@ -81,6 +85,15 @@ jobs:
         run: pnpm run typecheck
       - name: test
         run: pnpm run test
+      - name: codeql init
+        if: inputs.enable-codeql
+        uses: github/codeql-action/init@v3.27.7
+        with:
+          build-mode: none
+          languages: ${{ inputs.codeql-languages }}
+      - name: codeql analysis
+        if: inputs.enable-codeql
+        uses: github/codeql-action/analyze@v3.27.7
       - name: code coverage
         if: inputs.enable-codecov
         uses: codecov/codecov-action@v5.1.1
