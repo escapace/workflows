@@ -25,6 +25,10 @@ on:
         default: false
         required: false
         type: boolean
+      enable-test:
+        default: true
+        required: false
+        type: boolean
       node-version:
         required: true
         type: string
@@ -84,6 +88,7 @@ jobs:
       - name: typecheck
         run: pnpm run typecheck
       - name: test
+        if: inputs.enable-test
         run: pnpm run test
       - name: codeql init
         if: inputs.enable-codeql
@@ -95,7 +100,7 @@ jobs:
         if: inputs.enable-codeql
         uses: github/codeql-action/analyze@v3.27.7
       - name: code coverage
-        if: inputs.enable-codecov
+        if: inputs.enable-codecov && inputs.enable-test
         uses: codecov/codecov-action@v5.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
