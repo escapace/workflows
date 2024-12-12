@@ -398,7 +398,7 @@ jobs:
       #     echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
       - name: provenance
         if: inputs.enable-cosign == true && inputs.enable-push == true
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           push-to-registry: true
           subject-digest: ${{ steps.manifest-digest.outputs.value }}
