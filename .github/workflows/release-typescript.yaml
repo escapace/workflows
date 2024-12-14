@@ -6,11 +6,11 @@ on:
         required: false
         type: string
       enable-github-packages-npm-registry:
-        default: false
+        default: true
         required: false
         type: boolean
       enable-npm-registry:
-        default: false
+        default: true
         required: false
         type: boolean
       node-version:
@@ -52,7 +52,12 @@ jobs:
           EOF
 
           while read -d '' -r file; do
-            if [[ "$(tar -axOf "${file}" package/package.json | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
+            package_json=$(tar -axOf "${file}" package/package.json)
+
+            is_private=$(echo "${package_json}" | jq -r 'if has("private") then .private else true end')
+            is_scoped=$(echo "${package_json}" | jq -r 'if has("name") then (.name | startswith("@escapace/")) else false end')
+
+            if [[ "${is_scoped}" == "true" && "${is_private}" == "false" ]]; then
               npm publish "${file}"
             fi
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)

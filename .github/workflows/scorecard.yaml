@@ -19,7 +19,6 @@ jobs:
         uses: ossf/scorecard-action@v2.4.0
         with:
           publish_results: true
-          repo_token: ${{ secrets.SCORECARD_TOKEN }}
           results_file: results.sarif
           results_format: sarif
           # https://github.com/ossf/scorecard-action#pat-token-creation.
