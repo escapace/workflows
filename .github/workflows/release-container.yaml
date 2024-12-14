@@ -385,21 +385,21 @@ jobs:
             | jq -r '.digest'
           )"
           echo "value=${digest}" >> "$GITHUB_OUTPUT"
-      # - name: install cosign
-      #   if: inputs.enable-cosign == true && inputs.enable-push == true
-      #   uses: sigstore/cosign-installer@v3.7.0
-      # - name: sign the index
-      #   if: inputs.enable-cosign == true && inputs.enable-push == true
-      #   env:
-      #     DIGEST: ${{ steps.manifest-digest.outputs.value }}
-      #     # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-      #     TAGS: ${{ steps.container-metadata.outputs.tags }}
-      #   run: |
-      #     echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
-      - name: provenance
+      - name: install cosign
         if: inputs.enable-cosign == true && inputs.enable-push == true
-        uses: actions/attest-build-provenance@v2
-        with:
-          push-to-registry: true
-          subject-digest: ${{ steps.manifest-digest.outputs.value }}
-          subject-name: ${{ steps.context.outputs.image }}
+        uses: sigstore/cosign-installer@v3.7.0
+      - name: sign the index
+        if: inputs.enable-cosign == true && inputs.enable-push == true
+        env:
+          DIGEST: ${{ steps.manifest-digest.outputs.value }}
+          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
+          TAGS: ${{ steps.container-metadata.outputs.tags }}
+        run: |
+          echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+      # - name: provenance
+      #   if: inputs.enable-cosign == true && inputs.enable-push == true
+      #   uses: actions/attest-build-provenance@v2
+      #   with:
+      #     push-to-registry: true
+      #     subject-digest: ${{ steps.manifest-digest.outputs.value }}
+      #     subject-name: ${{ steps.context.outputs.image }}
