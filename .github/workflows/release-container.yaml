@@ -10,6 +10,11 @@ on:
         description: 'list of build-time variables'
         required: false
         type: string
+      enable-build-provenance-attestation:
+        default: false
+        description: 'generate signed build provenance attestation'
+        required: false
+        type: boolean
       enable-cosign:
         default: false
         description: 'sign the resulting docker image(s)'
@@ -396,10 +401,10 @@ jobs:
           TAGS: ${{ steps.container-metadata.outputs.tags }}
         run: |
           echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
-      # - name: provenance
-      #   if: inputs.enable-cosign == true && inputs.enable-push == true
-      #   uses: actions/attest-build-provenance@v2
-      #   with:
-      #     push-to-registry: true
-      #     subject-digest: ${{ steps.manifest-digest.outputs.value }}
-      #     subject-name: ${{ steps.context.outputs.image }}
+      - name: provenance
+        if: inputs.enable-build-provenance-attestation == true && inputs.enable-push == true
+        uses: actions/attest-build-provenance@v2
+        with:
+          push-to-registry: true
+          subject-digest: ${{ steps.manifest-digest.outputs.value }}
+          subject-name: ${{ steps.context.outputs.image }}
