@@ -132,7 +132,7 @@ jobs:
     name: ${{ fromJSON(matrix.package).name }} ${{ matrix.platform }}
     needs:
       - context
-    runs-on: ${{ !github.event.repository.private && matrix.platform == 'linux/arm64' && 'ubuntu-latest' || 'ubuntu-22.04-arm' }}
+    runs-on: ${{ !github.event.repository.private && matrix.platform == 'linux/arm64' && 'ubuntu-22.04-arm' || 'ubuntu-latest' }}
     env:
       DOCKER_BUILD_RECORD_UPLOAD: false
       DOCKER_BUILD_SUMMARY: false
