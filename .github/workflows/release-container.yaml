@@ -259,12 +259,12 @@ jobs:
             ${{ steps.dockerfile.outputs.cache-path }}
           restore-keys: |
             cache-mounts-${{ steps.context.outputs.cache-key }}-
-      # - name: inject cache into docker
-      #   uses: reproducible-containers/buildkit-cache-dance@61bd187f75f25d38e056fdd48506fac777c6ebec
-      #   with:
-      #     builder: ${{ steps.buildx.outputs.name }}
-      #     cache-map: ${{ steps.dockerfile.outputs.cache-map }}
-      #     skip-extraction: ${{ steps.cache.outputs.cache-hit }}
+      - name: inject cache into docker
+        uses: reproducible-containers/buildkit-cache-dance@61bd187f75f25d38e056fdd48506fac777c6ebec
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-map: ${{ steps.dockerfile.outputs.cache-map }}
+          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
       - name: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
         id: test
@@ -280,16 +280,16 @@ jobs:
           platforms: ${{ steps.context.outputs.platform }}
           push: false
           target: test
+      # cache-from: |
+      #   type=gha,scope=${{ steps.context.outputs.cache-key }}
+      #   type=gha,scope=test-${{ steps.context.outputs.cache-key }}
+      # cache-to: type=gha,mode=max,scope=${{ steps.context.outputs.cache-key }}
       - name: (re)build and push
         if: inputs.enable-push == true
         id: push
         uses: docker/build-push-action@v6
         with:
           build-args: ${{ inputs.build-args }}
-          cache-from: |
-            type=gha,scope=${{ steps.context.outputs.cache-key }}
-            type=gha,scope=test-${{ steps.context.outputs.cache-key }}
-          cache-to: type=gha,mode=max,scope=${{ steps.context.outputs.cache-key }}
           context: .
           file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
