@@ -66,5 +66,5 @@ jobs:
       - id: action-context
         uses: escapace/action-context@v0.10.9
         with:
-          node-version: 22.12.0
+          node-version: 22.13.1
           token: ${{ github.token }}
