@@ -67,7 +67,7 @@ jobs:
             always-auth=true
           EOF
       - name: install pnpm
-        uses: pnpm/action-setup@v4.0.0
+        uses: pnpm/action-setup@v4.1.0
         with:
           run_install: false
           version: ${{ inputs.pnpm-version }}
@@ -92,16 +92,16 @@ jobs:
         run: pnpm run test
       - name: codeql init
         if: inputs.enable-codeql
-        uses: github/codeql-action/init@v3.28.1
+        uses: github/codeql-action/init@v3.28.13
         with:
           build-mode: none
           languages: ${{ inputs.codeql-languages }}
       - name: codeql analysis
         if: inputs.enable-codeql
-        uses: github/codeql-action/analyze@v3.28.1
+        uses: github/codeql-action/analyze@v3.28.13
       - name: code coverage
         if: inputs.enable-codecov && inputs.enable-test
-        uses: codecov/codecov-action@v5.1.2
+        uses: codecov/codecov-action@v5.4.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: pnpm pack
