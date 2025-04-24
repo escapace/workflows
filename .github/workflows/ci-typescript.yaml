@@ -93,13 +93,13 @@ jobs:
         run: pnpm run test
       - name: codeql init
         if: inputs.enable-codeql
-        uses: github/codeql-action/init@v3.28.15
+        uses: github/codeql-action/init@v3.28.16
         with:
           build-mode: none
           languages: ${{ inputs.codeql-languages }}
       - name: codeql analysis
         if: inputs.enable-codeql
-        uses: github/codeql-action/analyze@v3.28.15
+        uses: github/codeql-action/analyze@v3.28.16
       - name: code coverage
         if: inputs.enable-codecov && inputs.enable-test
         uses: codecov/codecov-action@v5.4.2
