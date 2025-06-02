@@ -16,7 +16,7 @@ jobs:
         with:
           persist-credentials: false
       - name: scorecard
-        uses: ossf/scorecard-action@v2.4.1
+        uses: ossf/scorecard-action@v2.4.2
         with:
           publish_results: true
           results_file: results.sarif
