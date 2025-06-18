@@ -16,13 +16,13 @@ jobs:
         with:
           persist-credentials: false
       - name: scorecard
-        uses: ossf/scorecard-action@v2.4.1
+        uses: ossf/scorecard-action@v2.4.2
         with:
           publish_results: true
           results_file: results.sarif
           results_format: sarif
           # https://github.com/ossf/scorecard-action#pat-token-creation.
       - name: upload
-        uses: github/codeql-action/upload-sarif@v3.28.18
+        uses: github/codeql-action/upload-sarif@v3.29.0
         with:
           sarif_file: results.sarif
