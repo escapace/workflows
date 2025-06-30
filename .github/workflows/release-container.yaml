@@ -261,7 +261,7 @@ jobs:
           restore-keys: |
             cache-mounts-${{ steps.context.outputs.cache-key }}-
       - name: inject cache into docker
-        uses: reproducible-containers/buildkit-cache-dance@61bd187f75f25d38e056fdd48506fac777c6ebec
+        uses: reproducible-containers/buildkit-cache-dance@5b81f4d29dc8397a7d341dba3aeecc7ec54d6361
         with:
           builder: ${{ steps.buildx.outputs.name }}
           cache-map: ${{ steps.dockerfile.outputs.cache-map }}
