@@ -7,16 +7,16 @@
     "email": "opensource@escapace.com"
   },
   "devDependencies": {
-    "@commitlint/cli": "19.6.0",
-    "@commitlint/config-conventional": "19.6.0",
-    "@ls-lint/ls-lint": "2.2.3",
-    "eslint": "9.16.0",
-    "eslint-config-escapace": "5.4.0",
-    "lefthook": "1.9.0",
-    "prettier": "3.4.2",
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
+    "@ls-lint/ls-lint": "2.3.1",
+    "eslint": "9.31.0",
+    "eslint-config-escapace": "5.8.0",
+    "lefthook": "1.12.2",
+    "prettier": "3.6.2",
     "prettier-config-escapace": "1.2.1",
-    "syncpack": "13.0.0",
-    "typescript": "5.7.2"
+    "syncpack": "13.0.4",
+    "typescript": "5.8.3"
   },
   "engines": {
     "node": ">=20.12.0",
