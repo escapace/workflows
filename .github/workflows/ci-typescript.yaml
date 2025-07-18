@@ -65,7 +65,6 @@ jobs:
           cat << EOF > "$HOME/.npmrc"
             //npm.pkg.github.com/:_authToken=$GITHUB_TOKEN
             @escapace:registry=https://npm.pkg.github.com
-            always-auth=true
           EOF
       - name: install pnpm
         uses: pnpm/action-setup@v4.1.0

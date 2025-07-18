@@ -48,7 +48,6 @@ jobs:
           cat << EOF > "$HOME/.npmrc"
             //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
             @escapace:registry=https://npm.pkg.github.com
-            always-auth=true
           EOF
 
           while read -d '' -r file; do
@@ -69,7 +68,6 @@ jobs:
           cat << EOF > "$HOME/.npmrc"
             //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
             @escapace:registry=https://registry.npmjs.org
-            always-auth=true
           EOF
 
           while read -d '' -r file; do
