@@ -130,7 +130,7 @@ jobs:
           retention-days: 3
       - name: build github-pages
         if: inputs.enable-github-pages
-        run: pnpm run build:github-pages
+        run: pnpm run build:github-pages --base "/${GITHUB_REPOSITORY#*/}/"
       - name: upload github-pages
         if: inputs.enable-github-pages
         uses: actions/upload-pages-artifact@v3
