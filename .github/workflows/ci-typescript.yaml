@@ -25,10 +25,22 @@ on:
         default: false
         required: false
         type: boolean
+      enable-github-pages:
+        default: false
+        required: false
+        type: boolean
       enable-test:
         default: true
         required: false
         type: boolean
+      github-pages-artifact-name:
+        default: github-pages
+        required: false
+        type: string
+      github-pages-path:
+        default: ./lib/github-pages
+        required: false
+        type: string
       node-version:
         required: true
         type: string
@@ -116,3 +128,12 @@ jobs:
             **/lib/*.tgz
             !**/node_modules/**
           retention-days: 3
+      - name: build github-pages
+        if: inputs.enable-github-pages
+        run: pnpm run build:github-pages
+      - name: upload github-pages
+        if: inputs.enable-github-pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: ${{ inputs.github-pages-artifact-name }}
+          path: ${{ inputs.github-pages-path }}
