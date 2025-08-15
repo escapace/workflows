@@ -4,12 +4,15 @@ on:
       changelog:
         description: 'short github sha'
         value: ${{ jobs.main.outputs.changelog }}
-      commitish:
-        description: 'short github sha'
-        value: ${{ jobs.main.outputs.commitish }}
       environment:
         description: 'version'
         value: ${{ jobs.main.outputs.environment }}
+      github-pages:
+        description: 'whether GitHub Pages is enabled'
+        value: ${{ jobs.main.outputs.github-pages }}
+      github-pages-path:
+        description: 'path of the directory containing the static assets'
+        value: ${{ jobs.main.outputs.github-pages-path }}
       latest:
         description: 'is latest'
         value: ${{ jobs.main.outputs.latest }}
@@ -19,15 +22,18 @@ on:
       pnpm-version:
         description: 'pnpm version'
         value: ${{ jobs.main.outputs.pnpm-version }}
-      preid:
-        description: 'prerelease identifier'
-        value: ${{ jobs.main.outputs.preid }}
       prerelease:
         description: 'is prerelease'
         value: ${{ jobs.main.outputs.prerelease }}
+      prerelease-identifier:
+        description: 'prerelease identifier'
+        value: ${{ jobs.main.outputs.prerelease-identifier }}
       ref:
         description: 'ref'
         value: ${{ jobs.main.outputs.ref }}
+      short-commit:
+        description: 'short github sha'
+        value: ${{ jobs.main.outputs.short-commit }}
       version:
         description: 'version'
         value: ${{ jobs.main.outputs.version }}
@@ -37,16 +43,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pages: read
     outputs:
       changelog: ${{ steps.action-context.outputs.changelog }}
-      commitish: ${{ steps.action-context.outputs.commitish }}
       environment: ${{ steps.action-context.outputs.environment }}
+      github-pages: ${{ fromJSON(steps.action-context.outputs.github-pages) }}
+      github-pages-path: ${{ steps.action-context.outputs.github-pages-path }}
       latest: ${{ fromJSON(steps.action-context.outputs.latest) }}
       node-version: ${{ steps.action-context.outputs.node-version }}
       pnpm-version: ${{ steps.action-context.outputs.pnpm-version }}
-      preid: ${{ steps.ref.outputs.preid }}
       prerelease: ${{ fromJSON(steps.action-context.outputs.prerelease) }}
+      prerelease-identifier: ${{ steps.ref.outputs.prerelease-identifier }}
       ref: ${{ steps.ref.outputs.value }}
+      short-commit: ${{ steps.action-context.outputs.short-commit }}
       version: ${{ steps.action-context.outputs.version }}
     steps:
       - name: ref
@@ -64,7 +73,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.ref.outputs.value }}
       - id: action-context
-        uses: escapace/action-context@v0.10.10
+        uses: escapace/action-context@v0.11.0
         with:
-          node-version: 22.13.1
+          node-version: 22.15.0
           token: ${{ github.token }}
