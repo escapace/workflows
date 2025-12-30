@@ -79,7 +79,7 @@ jobs:
             @escapace:registry=https://npm.pkg.github.com
           EOF
       - name: install pnpm
-        uses: pnpm/action-setup@v4.1.0
+        uses: pnpm/action-setup@v4.2.0
         with:
           run_install: false
           version: ${{ inputs.pnpm-version }}
