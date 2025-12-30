@@ -72,7 +72,7 @@ jobs:
           restore-keys: |
             terraform-plugin-${{ runner.os }}-
       - name: setup tflint
-        uses: terraform-linters/setup-tflint@v5
+        uses: terraform-linters/setup-tflint@v6
         with:
           tflint_version: ${{ inputs.tflint-version }}
       - name: trivy setup
