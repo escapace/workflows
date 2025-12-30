@@ -36,7 +36,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: setup node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version }}
       - name: install pnpm
