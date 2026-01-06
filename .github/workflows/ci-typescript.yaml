@@ -121,7 +121,7 @@ jobs:
         run: pnpm run pack --version ${{ inputs.version }}
       - name: upload artifact
         if: inputs.enable-artifact-upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact-name }}
           path: |
