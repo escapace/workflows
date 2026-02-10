@@ -2,10 +2,13 @@ on:
   workflow_call:
     outputs:
       changelog:
-        description: 'short github sha'
+        description: 'changelog markdown'
         value: ${{ jobs.main.outputs.changelog }}
+      context:
+        description: 'JSON snapshot of all outputs'
+        value: ${{ jobs.main.outputs.context }}
       environment:
-        description: 'version'
+        description: 'environment classification'
         value: ${{ jobs.main.outputs.environment }}
       github-pages:
         description: 'whether GitHub Pages is enabled'
@@ -22,15 +25,45 @@ on:
       pnpm-version:
         description: 'pnpm version'
         value: ${{ jobs.main.outputs.pnpm-version }}
+      pr-author-bot:
+        description: 'whether the PR author is a bot account'
+        value: ${{ jobs.main.outputs.pr-author-bot }}
+      pr-base-ref:
+        description: 'pull request base branch name'
+        value: ${{ jobs.main.outputs.pr-base-ref }}
+      pr-checks-clear:
+        description: 'whether all status checks are passing'
+        value: ${{ jobs.main.outputs.pr-checks-clear }}
+      pr-commits-trusted:
+        description: 'whether every pull request commit author is trusted'
+        value: ${{ jobs.main.outputs.pr-commits-trusted }}
+      pr-head-ref:
+        description: 'pull request head branch name'
+        value: ${{ jobs.main.outputs.pr-head-ref }}
+      pr-last-commit-age-minute:
+        description: 'elapsed full minutes since the latest pull request head commit'
+        value: ${{ jobs.main.outputs.pr-last-commit-age-minute }}
+      pr-merge-state-clear:
+        description: 'whether pull request merge state is clear'
+        value: ${{ jobs.main.outputs.pr-merge-state-clear }}
+      pr-mergeable:
+        description: 'whether the pull request has no merge conflicts'
+        value: ${{ jobs.main.outputs.pr-mergeable }}
+      pr-not-draft:
+        description: 'whether the pull request is not a draft'
+        value: ${{ jobs.main.outputs.pr-not-draft }}
+      pr-number:
+        description: 'pull request number'
+        value: ${{ jobs.main.outputs.pr-number }}
+      pr-review-clear:
+        description: 'whether reviews do not block merging'
+        value: ${{ jobs.main.outputs.pr-review-clear }}
       prerelease:
         description: 'is prerelease'
         value: ${{ jobs.main.outputs.prerelease }}
       prerelease-identifier:
         description: 'prerelease identifier'
         value: ${{ jobs.main.outputs.prerelease-identifier }}
-      ref:
-        description: 'ref'
-        value: ${{ jobs.main.outputs.ref }}
       short-commit:
         description: 'short github sha'
         value: ${{ jobs.main.outputs.short-commit }}
@@ -42,37 +75,45 @@ jobs:
   main:
     runs-on: ubuntu-latest
     permissions:
+      checks: read
       contents: read
+      pull-requests: read
+      statuses: read
     outputs:
       changelog: ${{ steps.action-context.outputs.changelog }}
+      context: ${{ steps.action-context.outputs.context }}
       environment: ${{ steps.action-context.outputs.environment }}
       github-pages: ${{ fromJSON(steps.action-context.outputs.github-pages) }}
       github-pages-path: ${{ steps.action-context.outputs.github-pages-path }}
       latest: ${{ fromJSON(steps.action-context.outputs.latest) }}
       node-version: ${{ steps.action-context.outputs.node-version }}
       pnpm-version: ${{ steps.action-context.outputs.pnpm-version }}
+      pr-author-bot: ${{ fromJSON(steps.action-context.outputs.pr-author-bot) }}
+      pr-base-ref: ${{ steps.action-context.outputs.pr-base-ref }}
+      pr-checks-clear: ${{ fromJSON(steps.action-context.outputs.pr-checks-clear) }}
+      pr-commits-trusted: ${{ fromJSON(steps.action-context.outputs.pr-commits-trusted) }}
+      pr-head-ref: ${{ steps.action-context.outputs.pr-head-ref }}
+      pr-last-commit-age-minute: ${{ fromJSON(steps.action-context.outputs.pr-last-commit-age-minute) }}
+      pr-merge-state-clear: ${{ fromJSON(steps.action-context.outputs.pr-merge-state-clear) }}
+      pr-mergeable: ${{ fromJSON(steps.action-context.outputs.pr-mergeable) }}
+      pr-not-draft: ${{ fromJSON(steps.action-context.outputs.pr-not-draft) }}
+      pr-number: ${{ fromJSON(steps.action-context.outputs.pr-number) }}
+      pr-review-clear: ${{ fromJSON(steps.action-context.outputs.pr-review-clear) }}
       prerelease: ${{ fromJSON(steps.action-context.outputs.prerelease) }}
-      prerelease-identifier: ${{ steps.ref.outputs.prerelease-identifier }}
-      ref: ${{ steps.ref.outputs.value }}
+      prerelease-identifier: ${{ steps.action-context.outputs.prerelease-identifier }}
       short-commit: ${{ steps.action-context.outputs.short-commit }}
       version: ${{ steps.action-context.outputs.version }}
     steps:
-      - name: ref
-        id: ref
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "value=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
-          else
-            echo "value=${GITHUB_REF}" >> $GITHUB_OUTPUT
-          fi
       - name: checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ steps.ref.outputs.value }}
+          ref: ${{ github.head_ref || github.ref }}
       - id: action-context
-        uses: escapace/action-context@v0.11.1
+        uses: escapace/action-context@v0.12.0
         with:
-          node-version: 22.15.0
+          node-version: 24.9.0
           token: ${{ github.token }}
+          trusted-bots: |
+            renovate[bot]
+            dependabot[bot]
