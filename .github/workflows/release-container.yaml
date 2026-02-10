@@ -48,13 +48,13 @@ on:
     # outputs:
     #   digest:
     #     description: 'image digest'
-    #     value: ${{ jobs.main.outputs.digest }}
+    #     value: ${{ jobs.build.outputs.digest }}
     #   image-id:
     #     description: 'image id'
-    #     value: ${{ jobs.main.outputs.image-id }}
+    #     value: ${{ jobs.build.outputs.image-id }}
     #   metadata:
     #     description: 'build result metadata'
-    #     value: ${{ jobs.main.outputs.metadata }}
+    #     value: ${{ jobs.build.outputs.metadata }}
 
 # permissions:
 #   packages: write
@@ -63,7 +63,7 @@ on:
 # TODO: BUILDKIT_MULTI_PLATFORM
 
 jobs:
-  context:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       archive: ${{ steps.context.outputs.archive }}
@@ -128,10 +128,10 @@ jobs:
 
           echo "packages=${options}" >>"$GITHUB_OUTPUT"
 
-  main:
+  build:
     name: ${{ fromJSON(matrix.package).name }} ${{ matrix.platform }}
     needs:
-      - context
+      - prepare
     # TODO: https://github.com/docker/build-push-action/issues/1302
     runs-on: ${{ !github.event.repository.private && matrix.platform == 'linux/arm64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
     env:
@@ -140,9 +140,9 @@ jobs:
     strategy:
       matrix:
         archive:
-          - ${{ needs.context.outputs.archive }}
-        package: ${{ fromJSON(needs.context.outputs.packages) }}
-        platform: ${{ fromJSON(needs.context.outputs.platforms) }}
+          - ${{ needs.prepare.outputs.archive }}
+        package: ${{ fromJSON(needs.prepare.outputs.packages) }}
+        platform: ${{ fromJSON(needs.prepare.outputs.platforms) }}
     # outputs:
     #   digest: ${{ steps.push.outputs.digest }}
     #   image-id: ${{ steps.push.outputs.imageid }}
@@ -155,7 +155,7 @@ jobs:
           DOCKERFILE: ${{ fromJSON(matrix.package).dockerfile }}
           NAME: ${{ fromJSON(matrix.package).name }}
           PLATFORM: ${{ matrix.platform }}
-          REPOSITORY_OWNER: ${{ github.repository_owner	}}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           # platform pair (replace / with -)
           echo "platform-with-dash=${PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
@@ -312,22 +312,22 @@ jobs:
           path: /tmp/digests/*
           retention-days: 1
 
-  index:
-    name: ${{ fromJSON(matrix.package).name }} index
+  publish:
+    name: ${{ fromJSON(matrix.package).name }} publish
     if: inputs.enable-push == true
     needs:
-      - context
-      - main
+      - prepare
+      - build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: ${{ fromJSON(needs.context.outputs.packages) }}
+        package: ${{ fromJSON(needs.prepare.outputs.packages) }}
     steps:
       - name: context
         id: context
         env:
           NAME: ${{ fromJSON(matrix.package).name }}
-          REPOSITORY_OWNER: ${{ github.repository_owner	}}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           # platform pair (replace / with -)
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"

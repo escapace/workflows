@@ -21,7 +21,7 @@
   "license": "MPL-2.0",
   "private": true,
   "scripts": {
-    "format": "syncpack format && eslint --no-warn-ignored --fix && prettier -uw .",
+    "format": "syncpack format && eslint --no-warn-ignored --fix && eslint --fix && prettier -uw .",
     "lint": "ls-lint --config .ls-lint.yaml && eslint",
     "prepare": "lefthook install",
     "syncpack": "syncpack fix-mismatches && syncpack set-semver-ranges && syncpack format"

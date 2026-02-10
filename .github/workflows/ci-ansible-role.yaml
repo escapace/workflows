@@ -6,8 +6,7 @@ permissions:
   packages: read
 
 jobs:
-  main:
-    name: main
+  continuous-integration:
     runs-on: ubuntu-latest
     steps:
       - name: docker login

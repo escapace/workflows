@@ -5,7 +5,7 @@ permissions:
   contents: read
 
 jobs:
-  main:
+  security-analysis:
     runs-on: ubuntu-latest
     steps:
       - name: checkout

@@ -28,7 +28,7 @@ permissions:
   packages: read
 
 jobs:
-  main:
+  continuous-integration:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -44,8 +44,8 @@ jobs:
         with:
           run_install: false
           version: ${{ inputs.pnpm-version }}
-      - name: get pnpm store directory
-        id: pnpm-store-path
+      - id: pnpm-store-path
+        name: get pnpm store directory
         run: echo "value=$(pnpm store path)" >> $GITHUB_OUTPUT
       - name: pnpm cache
         uses: actions/cache@v5

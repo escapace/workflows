@@ -3,79 +3,79 @@ on:
     outputs:
       changelog:
         description: 'changelog markdown'
-        value: ${{ jobs.main.outputs.changelog }}
+        value: ${{ jobs.context.outputs.changelog }}
       context:
         description: 'JSON snapshot of all outputs'
-        value: ${{ jobs.main.outputs.context }}
+        value: ${{ jobs.context.outputs.context }}
       environment:
         description: 'environment classification'
-        value: ${{ jobs.main.outputs.environment }}
+        value: ${{ jobs.context.outputs.environment }}
       github-pages:
         description: 'whether GitHub Pages is enabled'
-        value: ${{ jobs.main.outputs.github-pages }}
+        value: ${{ jobs.context.outputs.github-pages }}
       github-pages-path:
         description: 'path of the directory containing the static assets'
-        value: ${{ jobs.main.outputs.github-pages-path }}
+        value: ${{ jobs.context.outputs.github-pages-path }}
       latest:
         description: 'is latest'
-        value: ${{ jobs.main.outputs.latest }}
+        value: ${{ jobs.context.outputs.latest }}
       node-version:
         description: 'node.js version'
-        value: ${{ jobs.main.outputs.node-version }}
+        value: ${{ jobs.context.outputs.node-version }}
       pnpm-version:
         description: 'pnpm version'
-        value: ${{ jobs.main.outputs.pnpm-version }}
+        value: ${{ jobs.context.outputs.pnpm-version }}
       pr-author-bot:
         description: 'whether the PR author is a bot account'
-        value: ${{ jobs.main.outputs.pr-author-bot }}
+        value: ${{ jobs.context.outputs.pr-author-bot }}
       pr-base-ref:
         description: 'pull request base branch name'
-        value: ${{ jobs.main.outputs.pr-base-ref }}
+        value: ${{ jobs.context.outputs.pr-base-ref }}
       pr-checks-clear:
         description: 'whether all status checks are passing'
-        value: ${{ jobs.main.outputs.pr-checks-clear }}
+        value: ${{ jobs.context.outputs.pr-checks-clear }}
       pr-commits-trusted:
         description: 'whether every pull request commit author is trusted'
-        value: ${{ jobs.main.outputs.pr-commits-trusted }}
+        value: ${{ jobs.context.outputs.pr-commits-trusted }}
       pr-head-ref:
         description: 'pull request head branch name'
-        value: ${{ jobs.main.outputs.pr-head-ref }}
+        value: ${{ jobs.context.outputs.pr-head-ref }}
       pr-last-commit-age-minute:
         description: 'elapsed full minutes since the latest pull request head commit'
-        value: ${{ jobs.main.outputs.pr-last-commit-age-minute }}
+        value: ${{ jobs.context.outputs.pr-last-commit-age-minute }}
       pr-merge-state-clear:
         description: 'whether pull request merge state is clear'
-        value: ${{ jobs.main.outputs.pr-merge-state-clear }}
+        value: ${{ jobs.context.outputs.pr-merge-state-clear }}
       pr-mergeable:
         description: 'whether the pull request has no merge conflicts'
-        value: ${{ jobs.main.outputs.pr-mergeable }}
+        value: ${{ jobs.context.outputs.pr-mergeable }}
       pr-not-draft:
         description: 'whether the pull request is not a draft'
-        value: ${{ jobs.main.outputs.pr-not-draft }}
+        value: ${{ jobs.context.outputs.pr-not-draft }}
       pr-number:
         description: 'pull request number'
-        value: ${{ jobs.main.outputs.pr-number }}
+        value: ${{ jobs.context.outputs.pr-number }}
       pr-review-clear:
         description: 'whether reviews do not block merging'
-        value: ${{ jobs.main.outputs.pr-review-clear }}
+        value: ${{ jobs.context.outputs.pr-review-clear }}
       prerelease:
         description: 'is prerelease'
-        value: ${{ jobs.main.outputs.prerelease }}
+        value: ${{ jobs.context.outputs.prerelease }}
       prerelease-identifier:
         description: 'prerelease identifier'
-        value: ${{ jobs.main.outputs.prerelease-identifier }}
+        value: ${{ jobs.context.outputs.prerelease-identifier }}
       ref:
         description: 'checkout ref'
-        value: ${{ jobs.main.outputs.ref }}
+        value: ${{ jobs.context.outputs.ref }}
       short-commit:
         description: 'short github sha'
-        value: ${{ jobs.main.outputs.short-commit }}
+        value: ${{ jobs.context.outputs.short-commit }}
       version:
         description: 'version'
-        value: ${{ jobs.main.outputs.version }}
+        value: ${{ jobs.context.outputs.version }}
 
 jobs:
-  main:
+  context:
     runs-on: ubuntu-latest
     outputs:
       changelog: ${{ steps.action-context.outputs.changelog }}

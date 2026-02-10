@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 jobs:
-  main:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: github release

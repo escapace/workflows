@@ -2,14 +2,13 @@ on:
   workflow_call:
 
 jobs:
-  analysis:
-    name: scorecard
-    runs-on: ubuntu-latest
+  security-analysis:
     permissions:
       actions: read
       contents: read
       id-token: write
       security-events: write
+    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v6
