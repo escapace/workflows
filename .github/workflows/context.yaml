@@ -64,6 +64,9 @@ on:
       prerelease-identifier:
         description: 'prerelease identifier'
         value: ${{ jobs.main.outputs.prerelease-identifier }}
+      ref:
+        description: 'checkout ref'
+        value: ${{ jobs.main.outputs.ref }}
       short-commit:
         description: 'short github sha'
         value: ${{ jobs.main.outputs.short-commit }}
@@ -101,6 +104,7 @@ jobs:
       pr-review-clear: ${{ fromJSON(steps.action-context.outputs.pr-review-clear) }}
       prerelease: ${{ fromJSON(steps.action-context.outputs.prerelease) }}
       prerelease-identifier: ${{ steps.action-context.outputs.prerelease-identifier }}
+      ref: ${{ github.head_ref || github.ref }}
       short-commit: ${{ steps.action-context.outputs.short-commit }}
       version: ${{ steps.action-context.outputs.version }}
     steps:
