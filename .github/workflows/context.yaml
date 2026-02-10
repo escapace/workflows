@@ -77,11 +77,6 @@ on:
 jobs:
   main:
     runs-on: ubuntu-latest
-    permissions:
-      checks: read
-      contents: read
-      pull-requests: read
-      statuses: read
     outputs:
       changelog: ${{ steps.action-context.outputs.changelog }}
       context: ${{ steps.action-context.outputs.context }}
