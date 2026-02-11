@@ -1,0 +1,320 @@
+on:
+  workflow_call:
+    inputs:
+      merge-method:
+        default: squash
+        required: false
+        type: string
+      pr-number:
+        required: false
+        type: string
+
+permissions: {}
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      count: ${{ steps.discover.outputs.count }}
+      matrix: ${{ steps.discover.outputs.matrix }}
+      merge-method: ${{ steps.discover.outputs.merge_method }}
+    steps:
+      - name: discover candidate pull requests
+        id: discover
+        env:
+          INPUT_MERGE_METHOD: ${{ inputs.merge-method }}
+          INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const mergeMethod = (process.env.INPUT_MERGE_METHOD ?? '').trim().toLowerCase() || 'squash'
+            if (mergeMethod !== 'squash' && mergeMethod !== 'rebase') {
+              core.setFailed(`workflow_call input merge-method must be one of: squash, rebase (got: ${String(process.env.INPUT_MERGE_METHOD)})`)
+              return
+            }
+
+            const input = (process.env.INPUT_PR_NUMBER ?? '').trim()
+            const discovered = []
+
+            if (input.length > 0) {
+              if (!/^\d+$/.test(input) || Number(input) <= 0) {
+                core.setFailed('workflow_call input pr-number must be a positive integer')
+                return
+              }
+
+              discovered.push(Number(input))
+            } else {
+              const pulls = await github.paginate(github.rest.pulls.list, {
+                ...context.repo,
+                state: 'open',
+                per_page: 100,
+              })
+
+              for (const pull of pulls) {
+                if (Number.isInteger(pull.number) && pull.number > 0) {
+                  discovered.push(pull.number)
+                } else {
+                  core.warning(`Skipping invalid PR identifier from discovery output: ${String(pull.number)}`)
+                }
+              }
+            }
+
+            const matrix = { include: discovered.map((prNumber) => ({ pr_number: prNumber })) }
+
+            core.info(`Discovered ${discovered.length} PR(s)`)
+            core.setOutput('count', String(discovered.length))
+            core.setOutput('matrix', JSON.stringify(matrix))
+            core.setOutput('merge_method', mergeMethod)
+
+  auto-merge:
+    if: needs.discover.outputs.count != '0'
+    needs:
+      - discover
+    permissions:
+      checks: read
+      contents: write
+      pull-requests: write
+      statuses: read
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          PR_NUMBER: ${{ matrix.pr_number }}
+        id: pr
+        name: fetch pull request head metadata
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const pullNumber = Number(process.env.PR_NUMBER)
+            if (!Number.isInteger(pullNumber) || pullNumber <= 0) {
+              core.setFailed(`Invalid matrix PR number: ${process.env.PR_NUMBER}`)
+              return
+            }
+
+            const { data: pull } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: pullNumber,
+            })
+
+            core.setOutput('head_ref', pull.head.ref)
+            core.setOutput('head_sha', pull.head.sha)
+            core.setOutput('auto_merge_enabled', String(pull.auto_merge !== null))
+
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr.outputs.head_ref }}
+
+      - id: context
+        name: evaluate pull request context
+        uses: escapace/action-context@v0.12.0
+        with:
+          context-source: pr
+          pr-head-ref: ${{ steps.pr.outputs.head_ref }}
+          pr-head-sha: ${{ steps.pr.outputs.head_sha }}
+          pr-number: ${{ matrix.pr_number }}
+          token: ${{ github.token }}
+          trusted-bots: |
+            renovate[bot]
+            dependabot[bot]
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_METHOD: ${{ needs.discover.outputs.merge-method }}
+        id: enable_auto_merge
+        if: |
+          steps.pr.outputs.auto_merge_enabled != 'true' &&
+          steps.context.outputs.pr-number != '0' &&
+          steps.context.outputs.pr-author-bot == 'true' &&
+          steps.context.outputs.pr-not-draft == 'true' &&
+          steps.context.outputs.pr-mergeable == 'true' &&
+          steps.context.outputs.pr-commits-trusted == 'true' &&
+          steps.context.outputs.pr-review-clear == 'true' &&
+          steps.context.outputs.pr-checks-clear == 'true' &&
+          steps.context.outputs.pr-merge-state-clear == 'true' &&
+          fromJson(steps.context.outputs.pr-last-commit-age-minute) >= 60
+        name: enable auto-merge (queue and non-queue)
+        run: |
+          case "$MERGE_METHOD" in
+            squash)
+              MERGE_FLAG='--squash'
+              ;;
+            rebase)
+              MERGE_FLAG='--rebase'
+              ;;
+            *)
+              echo "::error::Unsupported merge method: $MERGE_METHOD"
+              exit 1
+              ;;
+          esac
+
+          gh pr merge "${{ steps.context.outputs.pr-number }}" \
+            --auto \
+            "$MERGE_FLAG" \
+            --match-head-commit "${{ steps.pr.outputs.head_sha }}"
+
+      - env:
+          AUTO_MERGE_ENABLED_BEFORE: ${{ steps.pr.outputs.auto_merge_enabled }}
+          ENABLE_AUTO_MERGE_OUTCOME: ${{ steps.enable_auto_merge.outcome }}
+          MERGE_METHOD: ${{ needs.discover.outputs.merge-method }}
+          PR_AUTHOR_BOT: ${{ steps.context.outputs.pr-author-bot }}
+          PR_BASE_REF: ${{ steps.context.outputs.pr-base-ref }}
+          PR_CHECKS_CLEAR: ${{ steps.context.outputs.pr-checks-clear }}
+          PR_COMMITS_TRUSTED: ${{ steps.context.outputs.pr-commits-trusted }}
+          PR_HEAD_REF: ${{ steps.context.outputs.pr-head-ref }}
+          PR_LAST_COMMIT_AGE_MINUTE: ${{ steps.context.outputs.pr-last-commit-age-minute }}
+          PR_MERGEABLE: ${{ steps.context.outputs.pr-mergeable }}
+          PR_MERGE_STATE_CLEAR: ${{ steps.context.outputs.pr-merge-state-clear }}
+          PR_NOT_DRAFT: ${{ steps.context.outputs.pr-not-draft }}
+          PR_NUMBER_CONTEXT: ${{ steps.context.outputs.pr-number }}
+          PR_NUMBER_REQUESTED: ${{ matrix.pr_number }}
+          PR_REVIEW_CLEAR: ${{ steps.context.outputs.pr-review-clear }}
+          REQUIRED_LAST_COMMIT_AGE_MINUTE: '60'
+        if: always()
+        name: summary
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const toBoolean = (value) => String(value ?? '').toLowerCase() === 'true'
+            const toInteger = (value) => {
+              const parsed = Number.parseInt(String(value ?? ''), 10)
+              return Number.isFinite(parsed) ? parsed : 0
+            }
+
+            const isPositiveIntegerString = (value) => /^\d+$/.test(value) && Number(value) > 0
+
+            const prNumberRequested = String(process.env.PR_NUMBER_REQUESTED ?? '').trim()
+            const prNumberFromContext = String(process.env.PR_NUMBER_CONTEXT ?? '').trim()
+            const contextPrNumberValid = isPositiveIntegerString(prNumberFromContext)
+            const requestedPrNumberValid = isPositiveIntegerString(prNumberRequested)
+            const prNumber = contextPrNumberValid
+              ? prNumberFromContext
+              : requestedPrNumberValid
+                ? prNumberRequested
+                : ''
+            const mergeMethod = String(process.env.MERGE_METHOD ?? '').trim()
+            const requiredAgeMinute = toInteger(process.env.REQUIRED_LAST_COMMIT_AGE_MINUTE)
+            const lastCommitAgeMinute = toInteger(process.env.PR_LAST_COMMIT_AGE_MINUTE)
+            const autoMergeEnabledBefore = toBoolean(process.env.AUTO_MERGE_ENABLED_BEFORE)
+            const enableStepOutcome = String(process.env.ENABLE_AUTO_MERGE_OUTCOME ?? 'skipped').toLowerCase()
+            const repository = String(process.env.GITHUB_REPOSITORY ?? '')
+            const pullRequestUrl = prNumber ? `https://github.com/${repository}/pull/${prNumber}` : ''
+
+            const checks = [
+              {
+                name: 'Pull request context resolved',
+                requirement: 'pr-number != 0',
+                actual: prNumberFromContext || '(empty)',
+                passed: contextPrNumberValid,
+              },
+              {
+                name: 'Author account is bot',
+                requirement: 'true',
+                actual: process.env.PR_AUTHOR_BOT ?? '(empty)',
+                passed: toBoolean(process.env.PR_AUTHOR_BOT),
+              },
+              {
+                name: 'Pull request is not draft',
+                requirement: 'true',
+                actual: process.env.PR_NOT_DRAFT ?? '(empty)',
+                passed: toBoolean(process.env.PR_NOT_DRAFT),
+              },
+              {
+                name: 'Pull request is mergeable',
+                requirement: 'true',
+                actual: process.env.PR_MERGEABLE ?? '(empty)',
+                passed: toBoolean(process.env.PR_MERGEABLE),
+              },
+              {
+                name: 'All commits are trusted',
+                requirement: 'true',
+                actual: process.env.PR_COMMITS_TRUSTED ?? '(empty)',
+                passed: toBoolean(process.env.PR_COMMITS_TRUSTED),
+              },
+              {
+                name: 'Review state is clear',
+                requirement: 'true',
+                actual: process.env.PR_REVIEW_CLEAR ?? '(empty)',
+                passed: toBoolean(process.env.PR_REVIEW_CLEAR),
+              },
+              {
+                name: 'Checks are clear',
+                requirement: 'true',
+                actual: process.env.PR_CHECKS_CLEAR ?? '(empty)',
+                passed: toBoolean(process.env.PR_CHECKS_CLEAR),
+              },
+              {
+                name: 'Merge state is clear',
+                requirement: 'true',
+                actual: process.env.PR_MERGE_STATE_CLEAR ?? '(empty)',
+                passed: toBoolean(process.env.PR_MERGE_STATE_CLEAR),
+              },
+              {
+                name: 'Last commit age',
+                requirement: `>= ${requiredAgeMinute} minute(s)`,
+                actual: `${lastCommitAgeMinute} minute(s)`,
+                passed: lastCommitAgeMinute >= requiredAgeMinute,
+              },
+            ]
+
+            const failedChecks = checks.filter((check) => !check.passed)
+
+            let decision = 'Blocked'
+            let action = `Policy gate is not satisfied (${failedChecks.length} failing check(s)).`
+
+            if (autoMergeEnabledBefore) {
+              decision = 'No change'
+              action = 'Auto-merge was already enabled before this evaluation run.'
+            } else if (failedChecks.length === 0 && enableStepOutcome === 'success') {
+              decision = 'Enabled'
+              action = `Auto-merge was enabled using the ${mergeMethod} strategy.`
+            } else if (failedChecks.length === 0 && enableStepOutcome === 'failure') {
+              decision = 'Failed'
+              action = 'Auto-merge command failed. See step logs for command output.'
+            } else if (failedChecks.length === 0 && enableStepOutcome === 'skipped') {
+              decision = 'Skipped'
+              action = 'Enable step was skipped despite a passing policy gate.'
+            }
+
+            const overviewRows = [
+              [{ data: 'Field', header: true }, { data: 'Value', header: true }],
+              ['Decision', decision],
+              ['Action', action],
+              ['Pull request', `#${prNumber || 'unknown'}`],
+              ['Requested pull request', prNumberRequested ? `#${prNumberRequested}` : '(none)'],
+              ['Context pull request', prNumberFromContext ? `#${prNumberFromContext}` : '(unavailable)'],
+              ['Pull request URL', pullRequestUrl || '(unavailable)'],
+              ['Branches', `${process.env.PR_HEAD_REF ?? '(unknown)'} → ${process.env.PR_BASE_REF ?? '(unknown)'}`],
+              ['Merge method', mergeMethod || '(empty)'],
+              ['Enable step outcome', enableStepOutcome],
+              ['Auto-merge enabled before run', String(autoMergeEnabledBefore)],
+            ]
+
+            const checkRows = [
+              [{ data: 'Policy check', header: true }, { data: 'Required', header: true }, { data: 'Actual', header: true }, { data: 'Status', header: true }],
+              ...checks.map((check) => [
+                check.name,
+                check.requirement,
+                check.actual,
+                check.passed ? 'pass' : 'fail',
+              ]),
+            ]
+
+            await core.summary
+              .addHeading(`Auto-merge summary for PR #${prNumber || 'unknown'}`, 2)
+              .addTable(overviewRows)
+              .addHeading('Policy checks', 3)
+              .addTable(checkRows)
+
+            if (failedChecks.length > 0 && !autoMergeEnabledBefore) {
+              await core.summary
+                .addHeading('Blocking checks', 3)
+                .addList(failedChecks.map((check) => `${check.name} (required: ${check.requirement}, actual: ${check.actual})`))
+            }
+
+            await core.summary.write()
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
