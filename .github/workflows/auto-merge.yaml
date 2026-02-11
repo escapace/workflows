@@ -189,129 +189,145 @@ jobs:
             const prNumberFromContext = String(process.env.PR_NUMBER_CONTEXT ?? '').trim()
             const contextPrNumberValid = isPositiveIntegerString(prNumberFromContext)
             const requestedPrNumberValid = isPositiveIntegerString(prNumberRequested)
+
             const prNumber = contextPrNumberValid
               ? prNumberFromContext
               : requestedPrNumberValid
                 ? prNumberRequested
                 : ''
+
             const mergeMethod = String(process.env.MERGE_METHOD ?? '').trim()
             const requiredAgeMinute = toInteger(process.env.REQUIRED_LAST_COMMIT_AGE_MINUTE)
             const lastCommitAgeMinute = toInteger(process.env.PR_LAST_COMMIT_AGE_MINUTE)
             const autoMergeEnabledBefore = toBoolean(process.env.AUTO_MERGE_ENABLED_BEFORE)
             const enableStepOutcome = String(process.env.ENABLE_AUTO_MERGE_OUTCOME ?? 'skipped').toLowerCase()
             const repository = String(process.env.GITHUB_REPOSITORY ?? '')
+
+            const headRef = String(process.env.PR_HEAD_REF ?? '').trim() || 'unknown'
+            const baseRef = String(process.env.PR_BASE_REF ?? '').trim() || 'unknown'
+
             const pullRequestUrl = prNumber ? `https://github.com/${repository}/pull/${prNumber}` : ''
+            const heading = pullRequestUrl
+              ? `Auto-merge: [PR #${prNumber}](${pullRequestUrl})`
+              : prNumber
+                ? `Auto-merge: PR #${prNumber}`
+                : 'Auto-merge'
 
             const checks = [
               {
-                name: 'Pull request context resolved',
-                requirement: 'pr-number != 0',
-                actual: prNumberFromContext || '(empty)',
+                label: 'PR context available',
                 passed: contextPrNumberValid,
+                details: contextPrNumberValid ? '' : `context pr-number: ${prNumberFromContext || 'empty'}`,
               },
               {
-                name: 'Author account is bot',
-                requirement: 'true',
-                actual: process.env.PR_AUTHOR_BOT ?? '(empty)',
+                label: 'Author is bot',
                 passed: toBoolean(process.env.PR_AUTHOR_BOT),
+                details: toBoolean(process.env.PR_AUTHOR_BOT) ? '' : `actual: ${String(process.env.PR_AUTHOR_BOT ?? 'empty')}`,
               },
               {
-                name: 'Pull request is not draft',
-                requirement: 'true',
-                actual: process.env.PR_NOT_DRAFT ?? '(empty)',
+                label: 'Not draft',
                 passed: toBoolean(process.env.PR_NOT_DRAFT),
+                details: toBoolean(process.env.PR_NOT_DRAFT) ? '' : `actual: ${String(process.env.PR_NOT_DRAFT ?? 'empty')}`,
               },
               {
-                name: 'Pull request is mergeable',
-                requirement: 'true',
-                actual: process.env.PR_MERGEABLE ?? '(empty)',
+                label: 'Mergeable',
                 passed: toBoolean(process.env.PR_MERGEABLE),
+                details: toBoolean(process.env.PR_MERGEABLE) ? '' : `actual: ${String(process.env.PR_MERGEABLE ?? 'empty')}`,
               },
               {
-                name: 'All commits are trusted',
-                requirement: 'true',
-                actual: process.env.PR_COMMITS_TRUSTED ?? '(empty)',
+                label: 'Commits trusted',
                 passed: toBoolean(process.env.PR_COMMITS_TRUSTED),
+                details: toBoolean(process.env.PR_COMMITS_TRUSTED) ? '' : `actual: ${String(process.env.PR_COMMITS_TRUSTED ?? 'empty')}`,
               },
               {
-                name: 'Review state is clear',
-                requirement: 'true',
-                actual: process.env.PR_REVIEW_CLEAR ?? '(empty)',
+                label: 'Review clear',
                 passed: toBoolean(process.env.PR_REVIEW_CLEAR),
+                details: toBoolean(process.env.PR_REVIEW_CLEAR) ? '' : `actual: ${String(process.env.PR_REVIEW_CLEAR ?? 'empty')}`,
               },
               {
-                name: 'Checks are clear',
-                requirement: 'true',
-                actual: process.env.PR_CHECKS_CLEAR ?? '(empty)',
+                label: 'Checks clear',
                 passed: toBoolean(process.env.PR_CHECKS_CLEAR),
+                details: toBoolean(process.env.PR_CHECKS_CLEAR) ? '' : `actual: ${String(process.env.PR_CHECKS_CLEAR ?? 'empty')}`,
               },
               {
-                name: 'Merge state is clear',
-                requirement: 'true',
-                actual: process.env.PR_MERGE_STATE_CLEAR ?? '(empty)',
+                label: 'Merge state clear',
                 passed: toBoolean(process.env.PR_MERGE_STATE_CLEAR),
+                details: toBoolean(process.env.PR_MERGE_STATE_CLEAR) ? '' : `actual: ${String(process.env.PR_MERGE_STATE_CLEAR ?? 'empty')}`,
               },
               {
-                name: 'Last commit age',
-                requirement: `>= ${requiredAgeMinute} minute(s)`,
-                actual: `${lastCommitAgeMinute} minute(s)`,
+                label: 'Last commit age',
                 passed: lastCommitAgeMinute >= requiredAgeMinute,
+                details: lastCommitAgeMinute >= requiredAgeMinute
+                  ? `${lastCommitAgeMinute} minutes`
+                  : `${lastCommitAgeMinute} < ${requiredAgeMinute} minutes`,
               },
             ]
 
             const failedChecks = checks.filter((check) => !check.passed)
+            const orderedChecks = [...checks].sort((a, b) => {
+              if (a.passed === b.passed) return 0
+              return a.passed ? 1 : -1
+            })
 
             let decision = 'Blocked'
-            let action = `Policy gate is not satisfied (${failedChecks.length} failing check(s)).`
+            let reason = failedChecks.length > 0
+              ? `${failedChecks.length} policy check(s) failing.`
+              : 'Policy checks passing, but merge was not enabled.'
 
             if (autoMergeEnabledBefore) {
               decision = 'No change'
-              action = 'Auto-merge was already enabled before this evaluation run.'
+              reason = 'Auto-merge already enabled.'
             } else if (failedChecks.length === 0 && enableStepOutcome === 'success') {
               decision = 'Enabled'
-              action = `Auto-merge was enabled using the ${mergeMethod} strategy.`
+              reason = `Auto-merge enabled using ${mergeMethod}.`
             } else if (failedChecks.length === 0 && enableStepOutcome === 'failure') {
               decision = 'Failed'
-              action = 'Auto-merge command failed. See step logs for command output.'
+              reason = 'Enable command failed. See logs.'
             } else if (failedChecks.length === 0 && enableStepOutcome === 'skipped') {
               decision = 'Skipped'
-              action = 'Enable step was skipped despite a passing policy gate.'
+              reason = 'Enable step skipped despite passing checks.'
             }
 
-            const overviewRows = [
-              [{ data: 'Field', header: true }, { data: 'Value', header: true }],
-              ['Decision', decision],
-              ['Action', action],
-              ['Pull request', `#${prNumber || 'unknown'}`],
-              ['Requested pull request', prNumberRequested ? `#${prNumberRequested}` : '(none)'],
-              ['Context pull request', prNumberFromContext ? `#${prNumberFromContext}` : '(unavailable)'],
-              ['Pull request URL', pullRequestUrl || '(unavailable)'],
-              ['Branches', `${process.env.PR_HEAD_REF ?? '(unknown)'} → ${process.env.PR_BASE_REF ?? '(unknown)'}`],
-              ['Merge method', mergeMethod || '(empty)'],
-              ['Enable step outcome', enableStepOutcome],
-              ['Auto-merge enabled before run', String(autoMergeEnabledBefore)],
+            const summaryLines = [
+              `Decision: ${decision}`,
+              `Reason: ${reason}`,
+              `Head → Base: ${headRef} → ${baseRef}`,
             ]
 
+            const diagnostics = []
+            if (requestedPrNumberValid && contextPrNumberValid && prNumberRequested !== prNumberFromContext) {
+              diagnostics.push(`Requested PR: #${prNumberRequested}`)
+              diagnostics.push(`Context PR: #${prNumberFromContext}`)
+            } else if (requestedPrNumberValid && !contextPrNumberValid) {
+              diagnostics.push(`Requested PR: #${prNumberRequested}`)
+              diagnostics.push(`Context PR: ${prNumberFromContext || 'empty'}`)
+            }
+
+            if (!autoMergeEnabledBefore && failedChecks.length === 0 && enableStepOutcome !== 'success') {
+              diagnostics.push(`Enable step outcome: ${enableStepOutcome}`)
+            }
+
+            if (autoMergeEnabledBefore) {
+              diagnostics.push('Auto-merge was already enabled before this run.')
+            }
+
             const checkRows = [
-              [{ data: 'Policy check', header: true }, { data: 'Required', header: true }, { data: 'Actual', header: true }, { data: 'Status', header: true }],
-              ...checks.map((check) => [
-                check.name,
-                check.requirement,
-                check.actual,
+              [{ data: 'Policy check', header: true }, { data: 'Status', header: true }, { data: 'Details', header: true }],
+              ...orderedChecks.map((check) => [
+                check.label,
                 check.passed ? 'pass' : 'fail',
+                check.details,
               ]),
             ]
 
-            await core.summary
-              .addHeading(`Auto-merge summary for PR #${prNumber || 'unknown'}`, 2)
-              .addTable(overviewRows)
-              .addHeading('Policy checks', 3)
-              .addTable(checkRows)
+            await core.summary.addHeading(heading, 2)
+            await core.summary.addList(summaryLines)
+            await core.summary.addHeading('Policy checks', 3)
+            await core.summary.addTable(checkRows)
 
-            if (failedChecks.length > 0 && !autoMergeEnabledBefore) {
-              await core.summary
-                .addHeading('Blocking checks', 3)
-                .addList(failedChecks.map((check) => `${check.name} (required: ${check.requirement}, actual: ${check.actual})`))
+            if (diagnostics.length > 0) {
+              const details = `<details><summary>Diagnostics</summary>\n\n${diagnostics.map((line) => `- ${line}`).join('\n')}\n\n</details>\n`
+              await core.summary.addRaw(details)
             }
 
             await core.summary.write()
