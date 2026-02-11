@@ -56,6 +56,24 @@ on:
     secrets:
       CODECOV_TOKEN:
 
+# Mixed-mode policy decision: do not split this workflow.
+# Rationale: the same build/test graph is reused across modes.
+# Caller permissions are the security upper bound and must be explicit.
+#
+# Approved caller permission profiles:
+#
+# Profile A (standard CI callers):
+# permissions:
+#   contents: read
+#   packages: read
+#
+# Profile B (CodeQL callers):
+# permissions:
+#   actions: read
+#   contents: read
+#   packages: read
+#   security-events: write
+
 jobs:
   continuous-integration:
     runs-on: ubuntu-latest

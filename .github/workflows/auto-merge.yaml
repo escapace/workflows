@@ -9,6 +9,8 @@ on:
         required: false
         type: string
 
+# Top-level permissions intentionally disabled.
+# Rationale: each job declares a minimal explicit permission profile.
 permissions: {}
 
 jobs:

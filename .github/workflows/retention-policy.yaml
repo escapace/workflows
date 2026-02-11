@@ -11,11 +11,13 @@ on:
         type: boolean
 
 permissions:
-  packages: write
+  contents: read
 
 jobs:
   maintenance:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     concurrency: retention-policy
     steps:
       - name: name

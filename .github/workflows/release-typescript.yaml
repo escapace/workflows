@@ -21,12 +21,14 @@ on:
         required: false
 
 permissions:
-  id-token: write
-  packages: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
     steps:
       - name: setup node
         uses: actions/setup-node@v6

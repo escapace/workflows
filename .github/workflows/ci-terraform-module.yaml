@@ -25,10 +25,12 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   continuous-integration:
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     steps:
       - name: checkout

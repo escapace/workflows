@@ -56,9 +56,24 @@ on:
     #     description: 'build result metadata'
     #     value: ${{ jobs.build.outputs.metadata }}
 
+# Mixed-mode policy decision: do not split this workflow.
+# Rationale: read-only and publish modes share the same build graph and differ
+# primarily in gated publish/provenance steps.
+# Caller job permissions are the security upper bound and must be explicit.
+#
+# Approved caller permission profiles:
+#
+# Profile A (read-only container validation; enable-push=false):
+# permissions:
+#   contents: read
+#   packages: read
+#
+# Profile B (publish mode; enable-push=true):
 # permissions:
 #   packages: write
 #   id-token: write
+#   attestations: write
+#   artifact-metadata: write
 
 # TODO: BUILDKIT_MULTI_PLATFORM
 
