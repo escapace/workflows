@@ -207,11 +207,6 @@ jobs:
             const baseRef = String(process.env.PR_BASE_REF ?? '').trim() || 'unknown'
 
             const pullRequestUrl = prNumber ? `https://github.com/${repository}/pull/${prNumber}` : ''
-            const prLink = pullRequestUrl
-              ? `[#${prNumber}](${pullRequestUrl})`
-              : prNumber
-                ? `#${prNumber}`
-                : 'unknown'
 
             const checks = [
               {
@@ -288,13 +283,6 @@ jobs:
               reason = 'Enable step skipped despite passing checks.'
             }
 
-            const summaryLines = [
-              `pr: ${prLink}`,
-              `decision: ${decision}`,
-              `reason: ${reason}`,
-              `${mergeMethod || 'merge'}: ${headRef} → ${baseRef}`,
-            ]
-
             const checkRows = [
               [{ data: 'policy check', header: true }, { data: 'status', header: true }, { data: 'details', header: true }],
               ...orderedChecks.map((check) => [
@@ -304,10 +292,22 @@ jobs:
               ]),
             ]
 
-            const summaryBlock = summaryLines.map((line) => `- ${line}`).join('\n')
-
             await core.summary.addHeading('auto-merge', 2)
-            await core.summary.addRaw(`${summaryBlock}\n\n`)
+
+            if (pullRequestUrl) {
+              await core.summary.addRaw('pr: ')
+              await core.summary.addLink(`#${prNumber}`, pullRequestUrl)
+              await core.summary.addEOL()
+            } else if (prNumber) {
+              await core.summary.addRaw(`pr: #${prNumber}`, true)
+            } else {
+              await core.summary.addRaw('pr: unknown', true)
+            }
+
+            await core.summary.addRaw(`decision: ${decision}`, true)
+            await core.summary.addRaw(`reason: ${reason}`, true)
+            await core.summary.addRaw(`${mergeMethod || 'merge'}: ${headRef} → ${baseRef}`, true)
+
             await core.summary.addHeading('policy checks', 3)
             await core.summary.addTable(checkRows)
             await core.summary.write()
