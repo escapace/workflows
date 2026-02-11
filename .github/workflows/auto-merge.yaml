@@ -127,7 +127,6 @@ jobs:
         if: |
           steps.pr.outputs.auto_merge_enabled != 'true' &&
           steps.context.outputs.pr-number != '0' &&
-          steps.context.outputs.pr-author-bot == 'true' &&
           steps.context.outputs.pr-not-draft == 'true' &&
           steps.context.outputs.pr-mergeable == 'true' &&
           steps.context.outputs.pr-commits-trusted == 'true' &&
@@ -159,7 +158,6 @@ jobs:
           AUTO_MERGE_ENABLED_BEFORE: ${{ steps.pr.outputs.auto_merge_enabled }}
           ENABLE_AUTO_MERGE_OUTCOME: ${{ steps.enable_auto_merge.outcome }}
           MERGE_METHOD: ${{ needs.discover.outputs.merge-method }}
-          PR_AUTHOR_BOT: ${{ steps.context.outputs.pr-author-bot }}
           PR_BASE_REF: ${{ steps.context.outputs.pr-base-ref }}
           PR_CHECKS_CLEAR: ${{ steps.context.outputs.pr-checks-clear }}
           PR_COMMITS_TRUSTED: ${{ steps.context.outputs.pr-commits-trusted }}
@@ -212,42 +210,37 @@ jobs:
               {
                 label: 'pr context available',
                 passed: contextPrNumberValid,
-                details: contextPrNumberValid ? '' : `context pr-number: ${prNumberFromContext || 'empty'}`,
-              },
-              {
-                label: 'author is bot',
-                passed: toBoolean(process.env.PR_AUTHOR_BOT),
-                details: toBoolean(process.env.PR_AUTHOR_BOT) ? '' : `actual: ${String(process.env.PR_AUTHOR_BOT ?? 'empty')}`,
+                details: contextPrNumberValid ? '' : `pr-number: ${prNumberFromContext || 'none'}`,
               },
               {
                 label: 'not draft',
                 passed: toBoolean(process.env.PR_NOT_DRAFT),
-                details: toBoolean(process.env.PR_NOT_DRAFT) ? '' : `actual: ${String(process.env.PR_NOT_DRAFT ?? 'empty')}`,
+                details: '',
               },
               {
                 label: 'mergeable',
                 passed: toBoolean(process.env.PR_MERGEABLE),
-                details: toBoolean(process.env.PR_MERGEABLE) ? '' : `actual: ${String(process.env.PR_MERGEABLE ?? 'empty')}`,
+                details: '',
               },
               {
                 label: 'commits trusted',
                 passed: toBoolean(process.env.PR_COMMITS_TRUSTED),
-                details: toBoolean(process.env.PR_COMMITS_TRUSTED) ? '' : `actual: ${String(process.env.PR_COMMITS_TRUSTED ?? 'empty')}`,
+                details: '',
               },
               {
                 label: 'review clear',
                 passed: toBoolean(process.env.PR_REVIEW_CLEAR),
-                details: toBoolean(process.env.PR_REVIEW_CLEAR) ? '' : `actual: ${String(process.env.PR_REVIEW_CLEAR ?? 'empty')}`,
+                details: '',
               },
               {
                 label: 'checks clear',
                 passed: toBoolean(process.env.PR_CHECKS_CLEAR),
-                details: toBoolean(process.env.PR_CHECKS_CLEAR) ? '' : `actual: ${String(process.env.PR_CHECKS_CLEAR ?? 'empty')}`,
+                details: '',
               },
               {
                 label: 'merge state clear',
                 passed: toBoolean(process.env.PR_MERGE_STATE_CLEAR),
-                details: toBoolean(process.env.PR_MERGE_STATE_CLEAR) ? '' : `actual: ${String(process.env.PR_MERGE_STATE_CLEAR ?? 'empty')}`,
+                details: '',
               },
               {
                 label: 'last commit age',
@@ -305,7 +298,7 @@ jobs:
               ['pr', prValue],
               ['decision', decision],
               ['reason', reason],
-              ['merge-method', `${mergeMethod || 'merge'}: ${headRef} → ${baseRef}`],
+              [`${mergeMethod || 'merge'}`, `${headRef} → ${baseRef}`],
             ]
 
             await core.summary.addTable(outcomeRows)
