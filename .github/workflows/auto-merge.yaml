@@ -207,55 +207,55 @@ jobs:
             const baseRef = String(process.env.PR_BASE_REF ?? '').trim() || 'unknown'
 
             const pullRequestUrl = prNumber ? `https://github.com/${repository}/pull/${prNumber}` : ''
-            const heading = pullRequestUrl
-              ? `Auto-merge: [PR #${prNumber}](${pullRequestUrl})`
+            const prLink = pullRequestUrl
+              ? `[#${prNumber}](${pullRequestUrl})`
               : prNumber
-                ? `Auto-merge: PR #${prNumber}`
-                : 'Auto-merge'
+                ? `#${prNumber}`
+                : 'unknown'
 
             const checks = [
               {
-                label: 'PR context available',
+                label: 'pr context available',
                 passed: contextPrNumberValid,
                 details: contextPrNumberValid ? '' : `context pr-number: ${prNumberFromContext || 'empty'}`,
               },
               {
-                label: 'Author is bot',
+                label: 'author is bot',
                 passed: toBoolean(process.env.PR_AUTHOR_BOT),
                 details: toBoolean(process.env.PR_AUTHOR_BOT) ? '' : `actual: ${String(process.env.PR_AUTHOR_BOT ?? 'empty')}`,
               },
               {
-                label: 'Not draft',
+                label: 'not draft',
                 passed: toBoolean(process.env.PR_NOT_DRAFT),
                 details: toBoolean(process.env.PR_NOT_DRAFT) ? '' : `actual: ${String(process.env.PR_NOT_DRAFT ?? 'empty')}`,
               },
               {
-                label: 'Mergeable',
+                label: 'mergeable',
                 passed: toBoolean(process.env.PR_MERGEABLE),
                 details: toBoolean(process.env.PR_MERGEABLE) ? '' : `actual: ${String(process.env.PR_MERGEABLE ?? 'empty')}`,
               },
               {
-                label: 'Commits trusted',
+                label: 'commits trusted',
                 passed: toBoolean(process.env.PR_COMMITS_TRUSTED),
                 details: toBoolean(process.env.PR_COMMITS_TRUSTED) ? '' : `actual: ${String(process.env.PR_COMMITS_TRUSTED ?? 'empty')}`,
               },
               {
-                label: 'Review clear',
+                label: 'review clear',
                 passed: toBoolean(process.env.PR_REVIEW_CLEAR),
                 details: toBoolean(process.env.PR_REVIEW_CLEAR) ? '' : `actual: ${String(process.env.PR_REVIEW_CLEAR ?? 'empty')}`,
               },
               {
-                label: 'Checks clear',
+                label: 'checks clear',
                 passed: toBoolean(process.env.PR_CHECKS_CLEAR),
                 details: toBoolean(process.env.PR_CHECKS_CLEAR) ? '' : `actual: ${String(process.env.PR_CHECKS_CLEAR ?? 'empty')}`,
               },
               {
-                label: 'Merge state clear',
+                label: 'merge state clear',
                 passed: toBoolean(process.env.PR_MERGE_STATE_CLEAR),
                 details: toBoolean(process.env.PR_MERGE_STATE_CLEAR) ? '' : `actual: ${String(process.env.PR_MERGE_STATE_CLEAR ?? 'empty')}`,
               },
               {
-                label: 'Last commit age',
+                label: 'last commit age',
                 passed: lastCommitAgeMinute >= requiredAgeMinute,
                 details: lastCommitAgeMinute >= requiredAgeMinute
                   ? `${lastCommitAgeMinute} minutes`
@@ -289,30 +289,14 @@ jobs:
             }
 
             const summaryLines = [
-              `Decision: ${decision}`,
-              `Reason: ${reason}`,
-              `Head → Base: ${headRef} → ${baseRef}`,
+              `pr: ${prLink}`,
+              `decision: ${decision}`,
+              `reason: ${reason}`,
+              `${mergeMethod || 'merge'}: ${headRef} → ${baseRef}`,
             ]
 
-            const diagnostics = []
-            if (requestedPrNumberValid && contextPrNumberValid && prNumberRequested !== prNumberFromContext) {
-              diagnostics.push(`Requested PR: #${prNumberRequested}`)
-              diagnostics.push(`Context PR: #${prNumberFromContext}`)
-            } else if (requestedPrNumberValid && !contextPrNumberValid) {
-              diagnostics.push(`Requested PR: #${prNumberRequested}`)
-              diagnostics.push(`Context PR: ${prNumberFromContext || 'empty'}`)
-            }
-
-            if (!autoMergeEnabledBefore && failedChecks.length === 0 && enableStepOutcome !== 'success') {
-              diagnostics.push(`Enable step outcome: ${enableStepOutcome}`)
-            }
-
-            if (autoMergeEnabledBefore) {
-              diagnostics.push('Auto-merge was already enabled before this run.')
-            }
-
             const checkRows = [
-              [{ data: 'Policy check', header: true }, { data: 'Status', header: true }, { data: 'Details', header: true }],
+              [{ data: 'policy check', header: true }, { data: 'status', header: true }, { data: 'details', header: true }],
               ...orderedChecks.map((check) => [
                 check.label,
                 check.passed ? 'pass' : 'fail',
@@ -320,16 +304,12 @@ jobs:
               ]),
             ]
 
-            await core.summary.addHeading(heading, 2)
-            await core.summary.addList(summaryLines)
-            await core.summary.addHeading('Policy checks', 3)
+            const summaryBlock = summaryLines.map((line) => `- ${line}`).join('\n')
+
+            await core.summary.addHeading('auto-merge', 2)
+            await core.summary.addRaw(`${summaryBlock}\n\n`)
+            await core.summary.addHeading('policy checks', 3)
             await core.summary.addTable(checkRows)
-
-            if (diagnostics.length > 0) {
-              const details = `<details><summary>Diagnostics</summary>\n\n${diagnostics.map((line) => `- ${line}`).join('\n')}\n\n</details>\n`
-              await core.summary.addRaw(details)
-            }
-
             await core.summary.write()
     strategy:
       fail-fast: false
