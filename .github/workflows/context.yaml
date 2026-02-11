@@ -37,6 +37,9 @@ on:
       pr-commits-trusted:
         description: 'whether every pull request commit author is trusted'
         value: ${{ jobs.context.outputs.pr-commits-trusted }}
+      pr-conventional-commits:
+        description: 'conventional commit compliance state for title and commits'
+        value: ${{ jobs.context.outputs.pr-conventional-commits }}
       pr-head-ref:
         description: 'pull request head branch name'
         value: ${{ jobs.context.outputs.pr-head-ref }}
@@ -90,6 +93,7 @@ jobs:
       pr-base-ref: ${{ steps.action-context.outputs.pr-base-ref }}
       pr-checks-clear: ${{ fromJSON(steps.action-context.outputs.pr-checks-clear) }}
       pr-commits-trusted: ${{ fromJSON(steps.action-context.outputs.pr-commits-trusted) }}
+      pr-conventional-commits: ${{ steps.action-context.outputs.pr-conventional-commits }}
       pr-head-ref: ${{ steps.action-context.outputs.pr-head-ref }}
       pr-last-commit-age-minute: ${{ fromJSON(steps.action-context.outputs.pr-last-commit-age-minute) }}
       pr-merge-state-clear: ${{ fromJSON(steps.action-context.outputs.pr-merge-state-clear) }}
@@ -109,7 +113,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.head_ref || github.ref }}
       - id: action-context
-        uses: escapace/action-context@v0.12.0
+        uses: escapace/action-context@v0.13.0
         with:
           node-version: v24.13.0
           token: ${{ github.token }}

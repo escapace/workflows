@@ -1,8 +1,8 @@
 on:
   workflow_call:
     inputs:
-      merge-method:
-        default: squash
+      merge-strategy:
+        default: rebase,squash
         required: false
         type: string
       pr-number:
@@ -19,20 +19,39 @@ jobs:
     outputs:
       count: ${{ steps.discover.outputs.count }}
       matrix: ${{ steps.discover.outputs.matrix }}
-      merge-method: ${{ steps.discover.outputs.merge_method }}
+      merge-strategy: ${{ steps.discover.outputs.merge_strategy }}
     steps:
       - name: discover candidate pull requests
         id: discover
         env:
-          INPUT_MERGE_METHOD: ${{ inputs.merge-method }}
+          INPUT_MERGE_STRATEGY: ${{ inputs.merge-strategy }}
           INPUT_PR_NUMBER: ${{ inputs.pr-number }}
         uses: actions/github-script@v8
         with:
           script: |
-            const mergeMethod = (process.env.INPUT_MERGE_METHOD ?? '').trim().toLowerCase() || 'squash'
-            if (mergeMethod !== 'squash' && mergeMethod !== 'rebase') {
-              core.setFailed(`workflow_call input merge-method must be one of: squash, rebase (got: ${String(process.env.INPUT_MERGE_METHOD)})`)
+            const mergeStrategyInput = (process.env.INPUT_MERGE_STRATEGY ?? '').trim().toLowerCase() || 'rebase,squash'
+            const mergeStrategyTokens = mergeStrategyInput
+              .split(',')
+              .map((token) => token.trim())
+              .filter((token) => token.length > 0)
+
+            if (mergeStrategyTokens.length === 0) {
+              core.setFailed('workflow_call input merge-strategy must contain at least one strategy')
               return
+            }
+
+            const allowedStrategies = new Set(['squash', 'rebase'])
+            const mergeStrategy = []
+
+            for (const strategy of mergeStrategyTokens) {
+              if (!allowedStrategies.has(strategy)) {
+                core.setFailed(`workflow_call input merge-strategy contains unsupported value '${strategy}'. Allowed values: squash, rebase`)
+                return
+              }
+
+              if (!mergeStrategy.includes(strategy)) {
+                mergeStrategy.push(strategy)
+              }
             }
 
             const input = (process.env.INPUT_PR_NUMBER ?? '').trim()
@@ -66,7 +85,7 @@ jobs:
             core.info(`Discovered ${discovered.length} PR(s)`)
             core.setOutput('count', String(discovered.length))
             core.setOutput('matrix', JSON.stringify(matrix))
-            core.setOutput('merge_method', mergeMethod)
+            core.setOutput('merge_strategy', mergeStrategy.join(','))
 
   auto-merge:
     if: needs.discover.outputs.count != '0'
@@ -109,7 +128,7 @@ jobs:
 
       - id: context
         name: evaluate pull request context
-        uses: escapace/action-context@v0.12.0
+        uses: escapace/action-context@v0.13.0
         with:
           context-source: pr
           pr-head-ref: ${{ steps.pr.outputs.head_ref }}
@@ -121,8 +140,58 @@ jobs:
             dependabot[bot]
 
       - env:
+          MERGE_STRATEGY_PREFERENCE: ${{ needs.discover.outputs.merge-strategy }}
+          PR_AUTHOR_BOT: ${{ steps.context.outputs.pr-author-bot }}
+          PR_CONVENTIONAL_COMMITS: ${{ steps.context.outputs.pr-conventional-commits }}
+        id: select_merge_strategy
+        name: select merge strategy
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const toBoolean = (value) => String(value ?? '').toLowerCase() === 'true'
+            const parsePreference = (value) => String(value ?? '')
+              .split(',')
+              .map((token) => token.trim().toLowerCase())
+              .filter((token) => token.length > 0)
+
+            const availableForState = (state) => {
+              switch (state) {
+                case 'all':
+                  return new Set(['squash', 'rebase'])
+                case 'title-only':
+                  return new Set(['squash'])
+                case 'commits-only':
+                  return new Set(['rebase'])
+                case 'none':
+                  return new Set()
+                default:
+                  throw new Error(`Unsupported pr-conventional-commits state: ${state}`)
+              }
+            }
+
+            const preference = parsePreference(process.env.MERGE_STRATEGY_PREFERENCE)
+            const isBot = toBoolean(process.env.PR_AUTHOR_BOT)
+            const conventionalState = String(process.env.PR_CONVENTIONAL_COMMITS ?? 'none').trim()
+            const effectivePreference = isBot ? ['squash', 'rebase'] : preference
+            const available = availableForState(conventionalState)
+
+            let selectedStrategy = 'none'
+
+            if (conventionalState !== 'none') {
+              for (const strategy of effectivePreference) {
+                if (available.has(strategy)) {
+                  selectedStrategy = strategy
+                  break
+                }
+              }
+            }
+
+            core.setOutput('selected_strategy', selectedStrategy)
+            core.setOutput('merge_flag', selectedStrategy === 'none' ? '' : `--${selectedStrategy}`)
+
+      - env:
           GH_TOKEN: ${{ github.token }}
-          MERGE_METHOD: ${{ needs.discover.outputs.merge-method }}
+          MERGE_FLAG: ${{ steps.select_merge_strategy.outputs.merge_flag }}
         id: enable_auto_merge
         if: |
           steps.pr.outputs.auto_merge_enabled != 'true' &&
@@ -133,22 +202,13 @@ jobs:
           steps.context.outputs.pr-review-clear == 'true' &&
           steps.context.outputs.pr-checks-clear == 'true' &&
           steps.context.outputs.pr-merge-state-clear == 'true' &&
-          fromJson(steps.context.outputs.pr-last-commit-age-minute) >= 60
+          fromJson(steps.context.outputs.pr-last-commit-age-minute) >= 60 &&
+          (
+            steps.select_merge_strategy.outputs.selected_strategy == 'squash' ||
+            steps.select_merge_strategy.outputs.selected_strategy == 'rebase'
+          )
         name: enable auto-merge (queue and non-queue)
         run: |
-          case "$MERGE_METHOD" in
-            squash)
-              MERGE_FLAG='--squash'
-              ;;
-            rebase)
-              MERGE_FLAG='--rebase'
-              ;;
-            *)
-              echo "::error::Unsupported merge method: $MERGE_METHOD"
-              exit 1
-              ;;
-          esac
-
           gh pr merge "${{ steps.context.outputs.pr-number }}" \
             --auto \
             "$MERGE_FLAG" \
@@ -157,10 +217,11 @@ jobs:
       - env:
           AUTO_MERGE_ENABLED_BEFORE: ${{ steps.pr.outputs.auto_merge_enabled }}
           ENABLE_AUTO_MERGE_OUTCOME: ${{ steps.enable_auto_merge.outcome }}
-          MERGE_METHOD: ${{ needs.discover.outputs.merge-method }}
+          MERGE_STRATEGY_SELECTED: ${{ steps.select_merge_strategy.outputs.selected_strategy }}
           PR_BASE_REF: ${{ steps.context.outputs.pr-base-ref }}
           PR_CHECKS_CLEAR: ${{ steps.context.outputs.pr-checks-clear }}
           PR_COMMITS_TRUSTED: ${{ steps.context.outputs.pr-commits-trusted }}
+          PR_CONVENTIONAL_COMMITS: ${{ steps.context.outputs.pr-conventional-commits }}
           PR_HEAD_REF: ${{ steps.context.outputs.pr-head-ref }}
           PR_LAST_COMMIT_AGE_MINUTE: ${{ steps.context.outputs.pr-last-commit-age-minute }}
           PR_MERGEABLE: ${{ steps.context.outputs.pr-mergeable }}
@@ -194,7 +255,7 @@ jobs:
                 ? prNumberRequested
                 : ''
 
-            const mergeMethod = String(process.env.MERGE_METHOD ?? '').trim()
+            const mergeStrategySelected = String(process.env.MERGE_STRATEGY_SELECTED ?? 'none').trim()
             const requiredAgeMinute = toInteger(process.env.REQUIRED_LAST_COMMIT_AGE_MINUTE)
             const lastCommitAgeMinute = toInteger(process.env.PR_LAST_COMMIT_AGE_MINUTE)
             const autoMergeEnabledBefore = toBoolean(process.env.AUTO_MERGE_ENABLED_BEFORE)
@@ -225,6 +286,11 @@ jobs:
               {
                 label: 'commits trusted',
                 passed: toBoolean(process.env.PR_COMMITS_TRUSTED),
+                details: '',
+              },
+              {
+                label: 'conventional commits',
+                passed: mergeStrategySelected === 'squash' || mergeStrategySelected === 'rebase',
                 details: '',
               },
               {
@@ -267,7 +333,7 @@ jobs:
               reason = 'Auto-merge already enabled.'
             } else if (failedChecks.length === 0 && enableStepOutcome === 'success') {
               decision = 'Enabled'
-              reason = `Auto-merge enabled using ${mergeMethod}.`
+              reason = `Auto-merge enabled using ${mergeStrategySelected}.`
             } else if (failedChecks.length === 0 && enableStepOutcome === 'failure') {
               decision = 'Failed'
               reason = 'Enable command failed. See logs.'
@@ -298,8 +364,11 @@ jobs:
               ['pr', prValue],
               ['decision', decision],
               ['reason', reason],
-              [`${mergeMethod || 'merge'}`, `${headRef} → ${baseRef}`],
             ]
+
+            if (mergeStrategySelected === 'squash' || mergeStrategySelected === 'rebase') {
+              outcomeRows.push([mergeStrategySelected, `${headRef} → ${baseRef}`])
+            }
 
             await core.summary.addTable(outcomeRows)
             await core.summary.addEOL()
