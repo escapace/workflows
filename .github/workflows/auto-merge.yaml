@@ -128,7 +128,7 @@ jobs:
 
       - id: context
         name: evaluate pull request context
-        uses: escapace/action-context@v0.13.0
+        uses: escapace/action-context@v0.13.1
         with:
           context-source: pr
           pr-head-ref: ${{ steps.pr.outputs.head_ref }}
