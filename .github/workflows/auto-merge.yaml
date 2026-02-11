@@ -284,31 +284,32 @@ jobs:
             }
 
             const checkRows = [
-              [{ data: 'policy check', header: true }, { data: 'status', header: true }, { data: 'details', header: true }],
-              ...orderedChecks.map((check) => [
-                check.label,
-                check.passed ? 'pass' : 'fail',
-                check.details,
-              ]),
+              [{ data: 'policy check', header: true }, { data: 'status', header: true }],
+              ...orderedChecks.map((check) => {
+                const details = String(check.details ?? '').trim()
+                const baseStatus = check.passed ? 'pass' : 'fail'
+                const status = details.length > 0 ? `${baseStatus} (${details})` : baseStatus
+                return [check.label, status]
+              }),
             ]
 
-            await core.summary.addHeading('auto-merge', 2)
-
-            if (pullRequestUrl) {
-              await core.summary.addRaw('pr: ')
-              await core.summary.addLink(`#${prNumber}`, pullRequestUrl)
-              await core.summary.addEOL()
-            } else if (prNumber) {
-              await core.summary.addRaw(`pr: #${prNumber}`, true)
-            } else {
-              await core.summary.addRaw('pr: unknown', true)
+            let prValue = prNumber ? `#${prNumber}` : 'unknown'
+            if (pullRequestUrl && prNumber) {
+              core.summary.emptyBuffer()
+              core.summary.addLink(`#${prNumber}`, pullRequestUrl)
+              prValue = core.summary.stringify().trim()
+              core.summary.emptyBuffer()
             }
 
-            await core.summary.addRaw(`decision: ${decision}`, true)
-            await core.summary.addRaw(`reason: ${reason}`, true)
-            await core.summary.addRaw(`${mergeMethod || 'merge'}: ${headRef} → ${baseRef}`, true)
+            const outcomeRows = [
+              ['pr', prValue],
+              ['decision', decision],
+              ['reason', reason],
+              ['merge-method', `${mergeMethod || 'merge'}: ${headRef} → ${baseRef}`],
+            ]
 
-            await core.summary.addHeading('policy checks', 3)
+            await core.summary.addTable(outcomeRows)
+            await core.summary.addEOL()
             await core.summary.addTable(checkRows)
             await core.summary.write()
     strategy:
