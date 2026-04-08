@@ -86,7 +86,7 @@ jobs:
       platforms: ${{ steps.context.outputs.platforms }}
     steps:
       - name: download context archive
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifact-name }}
       - name: extract context archive
@@ -206,7 +206,7 @@ jobs:
           rm -rf "${WORKSPACE}"
           mkdir -p "${WORKSPACE}"
       - name: download context archive
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifact-name }}
       - name: extract context archive
@@ -348,7 +348,7 @@ jobs:
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
           echo "image=ghcr.io/${REPOSITORY_OWNER}/${NAME}" >> "$GITHUB_OUTPUT"
       - name: download digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           merge-multiple: true
           path: /tmp/digests
