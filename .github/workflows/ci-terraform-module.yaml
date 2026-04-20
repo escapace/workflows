@@ -57,7 +57,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store
       - name: setup terrraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ inputs.terraform-version }}
           terraform_wrapper: false
