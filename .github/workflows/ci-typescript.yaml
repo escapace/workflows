@@ -84,7 +84,7 @@ jobs:
           ref: ${{ inputs.ref }}
           submodules: recursive
       - name: setup node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: ${{ inputs.node-version }}
       - env:
