@@ -1,2 +1,18 @@
+blockExoticSubdeps: true
+childConcurrency: 1
+extendNodePath: false
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - '@escapace/syncpack-configuration'
+  - eslint-config-escapace
+  - prettier-config-escapace
 onlyBuiltDependencies:
+  - esbuild
   - lefthook
+  - oxc-resolver
+strictDepBuilds: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - eslint
+  - '@eslint/*'
+  - ts-api-utils@2.3.0
