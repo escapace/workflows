@@ -28,7 +28,7 @@ jobs:
         env:
           INPUT_MERGE_STRATEGY: ${{ inputs.merge-strategy }}
           INPUT_PR_NUMBER: ${{ inputs.pr-number }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const mergeStrategyInput = (process.env.INPUT_MERGE_STRATEGY ?? '').trim().toLowerCase() || 'rebase,squash'
@@ -104,7 +104,7 @@ jobs:
           PR_NUMBER: ${{ matrix.pr_number }}
         id: pr
         name: fetch pull request head metadata
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const pullNumber = Number(process.env.PR_NUMBER)
@@ -147,7 +147,7 @@ jobs:
           PR_CONVENTIONAL_COMMITS: ${{ steps.context.outputs.pr-conventional-commits }}
         id: select_merge_strategy
         name: select merge strategy
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const toBoolean = (value) => String(value ?? '').toLowerCase() === 'true'
@@ -235,7 +235,7 @@ jobs:
           REQUIRED_LAST_COMMIT_AGE_MINUTE: '60'
         if: always()
         name: summary
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const toBoolean = (value) => String(value ?? '').toLowerCase() === 'true'
