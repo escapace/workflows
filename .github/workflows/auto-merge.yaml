@@ -13,6 +13,10 @@ on:
 # Rationale: each job declares a minimal explicit permission profile.
 permissions: {}
 
+concurrency:
+  cancel-in-progress: false
+  group: auto-merge-${{ github.repository }}
+
 jobs:
   discover:
     runs-on: ubuntu-latest

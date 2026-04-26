@@ -26,6 +26,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  cancel-in-progress: false
+  group: continuous-integration-${{ github.repository }}-${{ github.ref }}
+
 jobs:
   continuous-integration:
     permissions:

@@ -93,6 +93,10 @@ on:
 #   packages: read
 #   security-events: write
 
+concurrency:
+  cancel-in-progress: false
+  group: continuous-integration-${{ github.repository }}-${{ github.ref }}
+
 jobs:
   continuous-integration:
     runs-on: ubuntu-latest
