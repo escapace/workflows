@@ -104,21 +104,21 @@ jobs:
           submodules: recursive
       - id: discover-build-containers
         name: discover container:build targets
-        uses: ./.github/actions/discover-containers
+        uses: escapace/workflows/.github/actions/discover-containers@trunk
         with:
           dockerfile-name: ${{ inputs.container-dockerfile-name }}
           required-script-name: ${{ inputs.container-build-required-script-name }}
           required-target: build
       - id: discover-export-containers
         name: discover container:export targets
-        uses: ./.github/actions/discover-containers
+        uses: escapace/workflows/.github/actions/discover-containers@trunk
         with:
           dockerfile-name: ${{ inputs.container-dockerfile-name }}
           required-script-name: ${{ inputs.container-export-required-script-name }}
           required-target: export
       - id: discover-test-containers
         name: discover container:test targets
-        uses: ./.github/actions/discover-containers
+        uses: escapace/workflows/.github/actions/discover-containers@trunk
         with:
           dockerfile-name: ${{ inputs.container-dockerfile-name }}
           required-script-name: ${{ inputs.container-test-required-script-name }}
@@ -172,7 +172,7 @@ jobs:
         run: pnpm run --if-present container:export:before
       - if: steps.discover-export-containers.outputs.has-containers == 'true'
         name: bake container:export targets
-        uses: ./.github/actions/bake-containers
+        uses: escapace/workflows/.github/actions/bake-containers@trunk
         with:
           build-args: |
             ENABLE_GITHUB_PACKAGES_NPM_REGISTRY=${{ inputs.enable-github-packages-npm-registry }}
@@ -196,7 +196,7 @@ jobs:
         run: pnpm run --if-present container:build:before
       - if: steps.discover-build-containers.outputs.has-containers == 'true'
         name: bake container:build targets
-        uses: ./.github/actions/bake-containers
+        uses: escapace/workflows/.github/actions/bake-containers@trunk
         with:
           build-args: |
             ENABLE_GITHUB_PACKAGES_NPM_REGISTRY=${{ inputs.enable-github-packages-npm-registry }}
@@ -212,7 +212,7 @@ jobs:
         run: pnpm run --if-present container:test:before
       - if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
         name: bake container:test targets
-        uses: ./.github/actions/bake-containers
+        uses: escapace/workflows/.github/actions/bake-containers@trunk
         with:
           build-args: |
             ENABLE_GITHUB_PACKAGES_NPM_REGISTRY=${{ inputs.enable-github-packages-npm-registry }}
