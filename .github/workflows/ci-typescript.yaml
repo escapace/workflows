@@ -9,6 +9,25 @@ on:
         default: javascript-typescript
         required: false
         type: string
+      container-build-required-script-name:
+        default: container:build
+        description: Optional additional package.json scripts gate for build-target container discovery. When non-empty, only packages whose package.json scripts[container-build-required-script-name] is a string are included. When set to '', no additional script gate is applied.
+        required: false
+        type: string
+      container-dockerfile-name:
+        default: Dockerfile
+        required: false
+        type: string
+      container-export-required-script-name:
+        default: container:export
+        description: Optional additional package.json scripts gate for export-target container discovery. When non-empty, only packages whose package.json scripts[container-export-required-script-name] is a string are included. When set to '', no additional script gate is applied.
+        required: false
+        type: string
+      container-test-required-script-name:
+        default: container:test
+        description: Optional additional package.json scripts gate for test-target container discovery. When non-empty, only packages whose package.json scripts[container-test-required-script-name] is a string are included. When set to '', no additional script gate is applied.
+        required: false
+        type: string
       enable-artifact-upload:
         default: false
         required: false
@@ -83,6 +102,27 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
+      - id: discover-build-containers
+        name: discover container:build targets
+        uses: ./.github/actions/discover-containers
+        with:
+          dockerfile-name: ${{ inputs.container-dockerfile-name }}
+          required-script-name: ${{ inputs.container-build-required-script-name }}
+          required-target: build
+      - id: discover-export-containers
+        name: discover container:export targets
+        uses: ./.github/actions/discover-containers
+        with:
+          dockerfile-name: ${{ inputs.container-dockerfile-name }}
+          required-script-name: ${{ inputs.container-export-required-script-name }}
+          required-target: export
+      - id: discover-test-containers
+        name: discover container:test targets
+        uses: ./.github/actions/discover-containers
+        with:
+          dockerfile-name: ${{ inputs.container-dockerfile-name }}
+          required-script-name: ${{ inputs.container-test-required-script-name }}
+          required-target: test
       - name: setup node
         uses: actions/setup-node@v6.3.0
         with:
@@ -111,8 +151,39 @@ jobs:
           path: ${{ steps.pnpm-store-path.outputs.value }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store
+      - if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
+        name: install the latest version of uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+            **/pyproject.toml
+          enable-cache: true
+          ignore-nothing-to-cache: true
+          version: 'latest'
+      - if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
+        name: install python dependencies
+        run: uv sync --locked
       - name: install dependencies
         run: pnpm install
+      - if: steps.discover-export-containers.outputs.has-containers == 'true'
+        name: run container:export:before hook
+        run: pnpm run --if-present container:export:before
+      - if: steps.discover-export-containers.outputs.has-containers == 'true'
+        name: bake container:export targets
+        uses: ./.github/actions/bake-containers
+        with:
+          build-args: |
+            ENABLE_GITHUB_PACKAGES_NPM_REGISTRY=${{ inputs.enable-github-packages-npm-registry }}
+            NODE_VERSION=${{ inputs.node-version }}
+            PNPM_VERSION=${{ inputs.pnpm-version }}
+            VERSION=${{ inputs.version }}
+          containers: ${{ steps.discover-export-containers.outputs.containers }}
+          export-directory: .
+      - if: steps.discover-export-containers.outputs.has-containers == 'true'
+        name: run container:export:after hook
+        run: pnpm run --if-present container:export:after
       - name: build
         run: pnpm run build
       - name: typecheck
@@ -120,6 +191,38 @@ jobs:
       - if: inputs.enable-test
         name: test
         run: pnpm run test
+      - if: steps.discover-build-containers.outputs.has-containers == 'true'
+        name: run container:build:before hook
+        run: pnpm run --if-present container:build:before
+      - if: steps.discover-build-containers.outputs.has-containers == 'true'
+        name: bake container:build targets
+        uses: ./.github/actions/bake-containers
+        with:
+          build-args: |
+            ENABLE_GITHUB_PACKAGES_NPM_REGISTRY=${{ inputs.enable-github-packages-npm-registry }}
+            NODE_VERSION=${{ inputs.node-version }}
+            PNPM_VERSION=${{ inputs.pnpm-version }}
+            VERSION=${{ inputs.version }}
+          containers: ${{ steps.discover-build-containers.outputs.containers }}
+      - if: steps.discover-build-containers.outputs.has-containers == 'true'
+        name: run container:build:after hook
+        run: pnpm run --if-present container:build:after
+      - if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
+        name: run container:test:before hook
+        run: pnpm run --if-present container:test:before
+      - if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
+        name: bake container:test targets
+        uses: ./.github/actions/bake-containers
+        with:
+          build-args: |
+            ENABLE_GITHUB_PACKAGES_NPM_REGISTRY=${{ inputs.enable-github-packages-npm-registry }}
+            NODE_VERSION=${{ inputs.node-version }}
+            PNPM_VERSION=${{ inputs.pnpm-version }}
+            VERSION=${{ inputs.version }}
+          containers: ${{ steps.discover-test-containers.outputs.containers }}
+      - if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
+        name: run container:test:after hook
+        run: pnpm run --if-present container:test:after
       - if: inputs.enable-codeql
         name: codeql init
         uses: github/codeql-action/init@v4.35.2
@@ -145,7 +248,7 @@ jobs:
           path: |
             **/lib/*.tgz
             !**/node_modules/**
-          retention-days: 3
+          retention-days: 1
       - if: inputs.enable-github-pages
         name: build github-pages
         run: pnpm run build:github-pages --base "/${GITHUB_REPOSITORY#*/}/"
@@ -155,3 +258,4 @@ jobs:
         with:
           name: ${{ inputs.github-pages-artifact-name }}
           path: ${{ inputs.github-pages-path }}
+          retention-days: 1
