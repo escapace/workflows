@@ -128,7 +128,7 @@ jobs:
           required-script-name: ${{ inputs.container-test-required-script-name }}
           required-target: test
       - name: setup node
-        uses: actions/setup-node@v6.3.0
+        uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ inputs.node-version }}
       - env:
