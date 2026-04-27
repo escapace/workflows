@@ -1,4 +1,5 @@
 lib
+.firecrawl
 
 .DS_Store
 .awcache

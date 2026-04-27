@@ -1,0 +1,76 @@
+on:
+  workflow_call:
+    inputs:
+      build-mode:
+        default: none
+        description: CodeQL build mode. Defaults to none; use manual or autobuild only in workflows that supply the required build behavior.
+        required: false
+        type: string
+      config-file:
+        default: ''
+        description: Optional repository-relative CodeQL configuration file. When omitted, .github/codeql/codeql-config.yaml is used if present; otherwise generated output directories are ignored by default.
+        required: false
+        type: string
+      languages:
+        description: CodeQL language identifier, for example javascript-typescript, python, ruby, or actions.
+        required: true
+        type: string
+      ref:
+        description: Git ref to check out for analysis. Prefer the normalized ref from the shared context workflow.
+        required: true
+        type: string
+
+# Caller permissions are the security upper bound and must include:
+# permissions:
+#   actions: read
+#   contents: read
+#   security-events: write
+permissions: {}
+
+concurrency:
+  cancel-in-progress: false
+  group: codeql-${{ github.repository }}-${{ inputs.ref }}
+
+jobs:
+  codeql-analysis:
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+      - if: inputs.config-file != ''
+        name: codeql init with explicit config file
+        uses: github/codeql-action/init@v4.35.2
+        with:
+          build-mode: ${{ inputs.build-mode }}
+          config-file: ${{ inputs.config-file }}
+          languages: ${{ inputs.languages }}
+      - if: inputs.config-file == '' && hashFiles('.github/codeql/codeql-config.yaml') != ''
+        name: codeql init with canonical config file
+        uses: github/codeql-action/init@v4.35.2
+        with:
+          build-mode: ${{ inputs.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yaml
+          languages: ${{ inputs.languages }}
+      - if: inputs.config-file == '' && hashFiles('.github/codeql/codeql-config.yaml') == ''
+        name: codeql init with default config
+        uses: github/codeql-action/init@v4.35.2
+        with:
+          build-mode: ${{ inputs.build-mode }}
+          config: |
+            paths-ignore:
+              - lib/**
+              - dist/**
+              - build/**
+              - coverage/**
+              - node_modules/**
+              - '**/*.min.js'
+          languages: ${{ inputs.languages }}
+      - name: codeql analysis
+        uses: github/codeql-action/analyze@v4.35.2

@@ -28,7 +28,7 @@ permissions:
 
 concurrency:
   cancel-in-progress: false
-  group: continuous-integration-${{ github.repository }}-${{ github.ref }}
+  group: continuous-integration-${{ github.repository }}-${{ inputs.ref }}
 
 jobs:
   continuous-integration:

@@ -6,6 +6,7 @@ permissions:
 
 concurrency:
   cancel-in-progress: false
+  # TODO: Use inputs.ref once ansible-role callers pass the normalized context ref.
   group: continuous-integration-${{ github.repository }}-${{ github.ref }}
 
 jobs:

@@ -36,6 +36,7 @@ on:
         default: false
         required: false
         type: boolean
+      # Compatibility-only CodeQL path. Prefer .github/workflows/codeql.yaml for new callers so regular CI does not need security-events: write.
       enable-codeql:
         default: false
         required: false
@@ -86,6 +87,7 @@ on:
 #   contents: read
 #   packages: read
 #
+# TODO: Remove this legacy CodeQL caller profile after callers migrate to .github/workflows/codeql.yaml.
 # Profile B (CodeQL callers):
 # permissions:
 #   actions: read
@@ -95,7 +97,7 @@ on:
 
 concurrency:
   cancel-in-progress: false
-  group: continuous-integration-${{ github.repository }}-${{ github.ref }}
+  group: continuous-integration-${{ github.repository }}-${{ inputs.ref }}
 
 jobs:
   continuous-integration:
