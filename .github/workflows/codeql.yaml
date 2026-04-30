@@ -50,6 +50,7 @@ jobs:
         with:
           build-mode: ${{ inputs.build-mode }}
           config-file: ${{ inputs.config-file }}
+          dependency-caching: false
           languages: ${{ inputs.languages }}
           trap-caching: false
       - if: inputs.config-file == '' && hashFiles('.github/codeql/codeql-config.yaml') != ''
@@ -58,6 +59,7 @@ jobs:
         with:
           build-mode: ${{ inputs.build-mode }}
           config-file: ./.github/codeql/codeql-config.yaml
+          dependency-caching: false
           languages: ${{ inputs.languages }}
           trap-caching: false
       - if: inputs.config-file == '' && hashFiles('.github/codeql/codeql-config.yaml') == ''
@@ -73,6 +75,7 @@ jobs:
               - coverage/**
               - node_modules/**
               - '**/*.min.js'
+          dependency-caching: false
           languages: ${{ inputs.languages }}
           trap-caching: false
       - name: codeql analysis
