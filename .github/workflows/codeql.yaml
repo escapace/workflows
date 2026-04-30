@@ -51,6 +51,7 @@ jobs:
           build-mode: ${{ inputs.build-mode }}
           config-file: ${{ inputs.config-file }}
           languages: ${{ inputs.languages }}
+          trap-caching: false
       - if: inputs.config-file == '' && hashFiles('.github/codeql/codeql-config.yaml') != ''
         name: codeql init with canonical config file
         uses: github/codeql-action/init@v4.35.2
@@ -58,6 +59,7 @@ jobs:
           build-mode: ${{ inputs.build-mode }}
           config-file: ./.github/codeql/codeql-config.yaml
           languages: ${{ inputs.languages }}
+          trap-caching: false
       - if: inputs.config-file == '' && hashFiles('.github/codeql/codeql-config.yaml') == ''
         name: codeql init with default config
         uses: github/codeql-action/init@v4.35.2
@@ -72,5 +74,6 @@ jobs:
               - node_modules/**
               - '**/*.min.js'
           languages: ${{ inputs.languages }}
+          trap-caching: false
       - name: codeql analysis
         uses: github/codeql-action/analyze@v4.35.2
