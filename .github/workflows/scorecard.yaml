@@ -6,12 +6,12 @@ permissions:
 
 jobs:
   security-analysis:
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       id-token: write
       security-events: write
-    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v6

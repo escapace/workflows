@@ -2,8 +2,8 @@ on:
   workflow_call:
     inputs:
       artifact-name:
-        default: package
         description: 'artifact name'
+        default: package
         required: false
         type: string
       build-args:
@@ -11,23 +11,23 @@ on:
         required: false
         type: string
       enable-build-provenance-attestation:
-        default: false
         description: 'generate signed build provenance attestation'
+        default: false
         required: false
         type: boolean
       enable-cosign:
-        default: false
         description: 'sign the resulting docker image(s)'
+        default: false
         required: false
         type: boolean
       enable-push:
-        default: false
         description: 'push is a shorthand for --output=type=registry'
+        default: false
         required: false
         type: boolean
       enable-test:
-        default: true
         description: 'run your tests when building the image'
+        default: true
         required: false
         type: boolean
       latest:

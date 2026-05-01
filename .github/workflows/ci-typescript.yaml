@@ -10,8 +10,8 @@ on:
         required: false
         type: string
       container-build-required-script-name:
-        default: container:build
         description: Optional additional package.json scripts gate for build-target container discovery. When non-empty, only packages whose package.json scripts[container-build-required-script-name] is a string are included. When set to '', no additional script gate is applied.
+        default: container:build
         required: false
         type: string
       container-dockerfile-name:
@@ -19,13 +19,13 @@ on:
         required: false
         type: string
       container-export-required-script-name:
-        default: container:export
         description: Optional additional package.json scripts gate for export-target container discovery. When non-empty, only packages whose package.json scripts[container-export-required-script-name] is a string are included. When set to '', no additional script gate is applied.
+        default: container:export
         required: false
         type: string
       container-test-required-script-name:
-        default: container:test
         description: Optional additional package.json scripts gate for test-target container discovery. When non-empty, only packages whose package.json scripts[container-test-required-script-name] is a string are included. When set to '', no additional script gate is applied.
+        default: container:test
         required: false
         type: string
       enable-artifact-upload:
@@ -108,22 +108,22 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
-      - id: discover-build-containers
-        name: discover container:build targets
+      - name: discover container:build targets
+        id: discover-build-containers
         uses: escapace/workflows/.github/actions/discover-containers@trunk
         with:
           dockerfile-name: ${{ inputs.container-dockerfile-name }}
           required-script-name: ${{ inputs.container-build-required-script-name }}
           required-target: build
-      - id: discover-export-containers
-        name: discover container:export targets
+      - name: discover container:export targets
+        id: discover-export-containers
         uses: escapace/workflows/.github/actions/discover-containers@trunk
         with:
           dockerfile-name: ${{ inputs.container-dockerfile-name }}
           required-script-name: ${{ inputs.container-export-required-script-name }}
           required-target: export
-      - id: discover-test-containers
-        name: discover container:test targets
+      - name: discover container:test targets
+        id: discover-test-containers
         uses: escapace/workflows/.github/actions/discover-containers@trunk
         with:
           dockerfile-name: ${{ inputs.container-dockerfile-name }}
@@ -133,10 +133,10 @@ jobs:
         uses: actions/setup-node@v6.4.0
         with:
           node-version: ${{ inputs.node-version }}
-      - env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: write .npmrc
         if: inputs.enable-github-packages-npm-registry
-        name: write .npmrc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat << EOF > "$HOME/.npmrc"
             //npm.pkg.github.com/:_authToken=$GITHUB_TOKEN
@@ -147,8 +147,8 @@ jobs:
         with:
           run_install: false
           version: ${{ inputs.pnpm-version }}
-      - id: pnpm-store-path
-        name: get pnpm store directory
+      - name: get pnpm store directory
+        id: pnpm-store-path
         run: echo "value=$(pnpm store path)" >> $GITHUB_OUTPUT
       - name: pnpm cache
         uses: actions/cache@v5
@@ -157,8 +157,8 @@ jobs:
           path: ${{ steps.pnpm-store-path.outputs.value }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store
-      - if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
-        name: install the latest version of uv
+      - name: install the latest version of uv
+        if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
         uses: astral-sh/setup-uv@v7
         with:
           cache-dependency-glob: |
@@ -168,16 +168,16 @@ jobs:
           enable-cache: true
           ignore-nothing-to-cache: true
           version: 'latest'
-      - if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
-        name: install python dependencies
+      - name: install python dependencies
+        if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
         run: uv sync --locked
       - name: install dependencies
         run: pnpm install
-      - if: steps.discover-export-containers.outputs.has-containers == 'true'
-        name: run container:export:before hook
+      - name: run container:export:before hook
+        if: steps.discover-export-containers.outputs.has-containers == 'true'
         run: pnpm run --if-present container:export:before
-      - if: steps.discover-export-containers.outputs.has-containers == 'true'
-        name: bake container:export targets
+      - name: bake container:export targets
+        if: steps.discover-export-containers.outputs.has-containers == 'true'
         uses: escapace/workflows/.github/actions/bake-containers@trunk
         with:
           build-args: |
@@ -187,21 +187,21 @@ jobs:
             VERSION=${{ inputs.version }}
           containers: ${{ steps.discover-export-containers.outputs.containers }}
           export-directory: .
-      - if: steps.discover-export-containers.outputs.has-containers == 'true'
-        name: run container:export:after hook
+      - name: run container:export:after hook
+        if: steps.discover-export-containers.outputs.has-containers == 'true'
         run: pnpm run --if-present container:export:after
       - name: build
         run: pnpm run build
       - name: typecheck
         run: pnpm run typecheck
-      - if: inputs.enable-test
-        name: test
+      - name: test
+        if: inputs.enable-test
         run: pnpm run test
-      - if: steps.discover-build-containers.outputs.has-containers == 'true'
-        name: run container:build:before hook
+      - name: run container:build:before hook
+        if: steps.discover-build-containers.outputs.has-containers == 'true'
         run: pnpm run --if-present container:build:before
-      - if: steps.discover-build-containers.outputs.has-containers == 'true'
-        name: bake container:build targets
+      - name: bake container:build targets
+        if: steps.discover-build-containers.outputs.has-containers == 'true'
         uses: escapace/workflows/.github/actions/bake-containers@trunk
         with:
           build-args: |
@@ -210,14 +210,14 @@ jobs:
             PNPM_VERSION=${{ inputs.pnpm-version }}
             VERSION=${{ inputs.version }}
           containers: ${{ steps.discover-build-containers.outputs.containers }}
-      - if: steps.discover-build-containers.outputs.has-containers == 'true'
-        name: run container:build:after hook
+      - name: run container:build:after hook
+        if: steps.discover-build-containers.outputs.has-containers == 'true'
         run: pnpm run --if-present container:build:after
-      - if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
-        name: run container:test:before hook
+      - name: run container:test:before hook
+        if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
         run: pnpm run --if-present container:test:before
-      - if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
-        name: bake container:test targets
+      - name: bake container:test targets
+        if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
         uses: escapace/workflows/.github/actions/bake-containers@trunk
         with:
           build-args: |
@@ -226,28 +226,28 @@ jobs:
             PNPM_VERSION=${{ inputs.pnpm-version }}
             VERSION=${{ inputs.version }}
           containers: ${{ steps.discover-test-containers.outputs.containers }}
-      - if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
-        name: run container:test:after hook
+      - name: run container:test:after hook
+        if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
         run: pnpm run --if-present container:test:after
-      - if: inputs.enable-codeql
-        name: codeql init
+      - name: codeql init
+        if: inputs.enable-codeql
         uses: github/codeql-action/init@v4.35.2
         with:
           build-mode: none
           languages: ${{ inputs.codeql-languages }}
-      - if: inputs.enable-codeql
-        name: codeql analysis
+      - name: codeql analysis
+        if: inputs.enable-codeql
         uses: github/codeql-action/analyze@v4.35.2
-      - if: inputs.enable-codecov && inputs.enable-test
-        name: code coverage
+      - name: code coverage
+        if: inputs.enable-codecov && inputs.enable-test
         uses: codecov/codecov-action@v6.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-      - if: inputs.enable-artifact-upload
-        name: pnpm pack
+      - name: pnpm pack
+        if: inputs.enable-artifact-upload
         run: pnpm run pack --version ${{ inputs.version }}
-      - if: inputs.enable-artifact-upload
-        name: upload artifact
+      - name: upload artifact
+        if: inputs.enable-artifact-upload
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
@@ -255,11 +255,11 @@ jobs:
             **/lib/*.tgz
             !**/node_modules/**
           retention-days: 1
-      - if: inputs.enable-github-pages
-        name: build github-pages
+      - name: build github-pages
+        if: inputs.enable-github-pages
         run: pnpm run build:github-pages --base "/${GITHUB_REPOSITORY#*/}/"
-      - if: inputs.enable-github-pages
-        name: upload github-pages
+      - name: upload github-pages
+        if: inputs.enable-github-pages
         uses: actions/upload-pages-artifact@v5
         with:
           name: ${{ inputs.github-pages-artifact-name }}

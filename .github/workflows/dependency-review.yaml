@@ -6,9 +6,9 @@ permissions:
 
 jobs:
   security-analysis:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v6

@@ -4,28 +4,28 @@ description: discover container build targets in a monorepo
 
 inputs:
   dockerfile-name:
-    default: Dockerfile
     description: Dockerfile file name required inside each candidate package directory
+    default: Dockerfile
     required: false
   image-name-prefix-prepend:
-    default: ''
     description: Prefix to prepend to each discovered container name after stripping
+    default: ''
     required: false
   image-name-prefix-strip:
-    default: ''
     description: Strip this prefix from the derived container name before prepending
+    default: ''
     required: false
   required-package-name-prefix:
-    default: ''
     description: Require package.json name to start with this prefix
+    default: ''
     required: false
   required-script-name:
-    default: ''
     description: Require package.json scripts[required-script-name] to be a string
+    default: ''
     required: false
   required-target:
-    default: ''
     description: Require the Dockerfile to define this named target stage
+    default: ''
     required: false
 
 outputs:
@@ -40,18 +40,19 @@ outputs:
     value: ${{ steps.discover.outputs.has-containers }}
 
 runs:
+  using: composite
   steps:
     - name: install dockerfile-tools
       uses: escapace/action-dockerfile-tools@v0.2.1
-    - env:
+    - name: discover containers
+      id: discover
+      env:
         DOCKERFILE_NAME: ${{ inputs.dockerfile-name }}
         IMAGE_NAME_PREFIX_PREPEND: ${{ inputs.image-name-prefix-prepend }}
         IMAGE_NAME_PREFIX_STRIP: ${{ inputs.image-name-prefix-strip }}
         REQUIRED_PACKAGE_NAME_PREFIX: ${{ inputs.required-package-name-prefix }}
         REQUIRED_SCRIPT_NAME: ${{ inputs.required-script-name }}
         REQUIRED_TARGET: ${{ inputs.required-target }}
-      id: discover
-      name: discover containers
       uses: actions/github-script@v9
       with:
         script: |
@@ -370,4 +371,3 @@ runs:
           core.setOutput('containers', JSON.stringify(containers))
           core.setOutput('count', String(containers.length))
           core.setOutput('has-containers', containers.length > 0 ? 'true' : 'false')
-  using: composite

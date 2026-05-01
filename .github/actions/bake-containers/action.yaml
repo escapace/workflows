@@ -4,39 +4,39 @@ description: build discovered containers with docker bake into local output dire
 
 inputs:
   build-args:
-    default: ''
     description: Multiline Docker build arguments in KEY=VALUE form applied to every baked container
+    default: ''
     required: false
   cache:
-    default: gha
     description: Cache backends to enable. Canonical values are gha and mounts. Accepts true for gha only, false for no container cache, or a comma- or newline-delimited list containing gha and/or mounts.
+    default: gha
     required: false
   cache-ignore-error:
-    default: 'false'
     description: Whether Bake gha layer-cache export errors should be ignored when gha cache is enabled.
+    default: 'false'
     required: false
   cache-key:
-    default: ''
     description: Optional additional partition key for persisted mount caches. Use this to separate RUN --mount=type=cache state across workflow contexts that should not share it.
+    default: ''
     required: false
   cache-mode:
-    default: max
     description: Bake gha layer-cache export mode when gha cache is enabled (min or max).
+    default: max
     required: false
   cache-scope:
-    default: buildkit
     description: Scope prefix used to derive per-target Bake gha cache scopes when gha cache is enabled.
+    default: buildkit
     required: false
   containers:
     description: JSON array from discover-containers
     required: true
   export-directory:
-    default: ''
     description: Optional workspace-relative directory to receive copied exported build results. Use '.' for the workspace root. When empty, no export copy is performed.
+    default: ''
     required: false
   platforms:
-    default: ''
     description: Optional comma- or newline-delimited list of supported platforms (linux/amd64, linux/arm64). Defaults to the native runner platform.
+    default: ''
     required: false
 
 outputs:
@@ -66,8 +66,11 @@ outputs:
     value: ${{ steps.plan.outputs.qemu-platforms }}
 
 runs:
+  using: composite
   steps:
-    - env:
+    - name: plan baked container build
+      id: plan
+      env:
         BUILD_ARGS: ${{ inputs.build-args }}
         CACHE: ${{ inputs.cache }}
         CACHE_IGNORE_ERROR: ${{ inputs.cache-ignore-error }}
@@ -77,8 +80,6 @@ runs:
         EXPORT_DIRECTORY: ${{ inputs.export-directory }}
         GITHUB_TOKEN: ${{ github.token }}
         PLATFORMS_INPUT: ${{ inputs.platforms }}
-      id: plan
-      name: plan baked container build
       uses: actions/github-script@v9
       with:
         script: |
@@ -367,28 +368,28 @@ runs:
           core.setOutput('platforms', JSON.stringify(platforms))
           core.setOutput('qemu-platforms', qemuPlatforms.join(','))
 
-    - if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.qemu-platforms != ''
-      name: setup qemu
+    - name: setup qemu
+      if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.qemu-platforms != ''
       uses: docker/setup-qemu-action@v4
       with:
         platforms: ${{ steps.plan.outputs.qemu-platforms }}
 
-    - id: buildx
+    - name: docker buildx
       if: steps.plan.outputs.has-containers == 'true'
-      name: docker buildx
+      id: buildx
       uses: docker/setup-buildx-action@v4
 
-    - if: steps.plan.outputs.has-containers == 'true'
-      name: install dockerfile-tools
+    - name: install dockerfile-tools
+      if: steps.plan.outputs.has-containers == 'true'
       uses: escapace/action-dockerfile-tools@v0.2.1
 
-    - env:
+    - name: discover cache mounts and derive cache keys
+      if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.persisted-mount-cache-enabled == 'true'
+      id: cache-plan
+      env:
         CACHE_KEY: ${{ inputs.cache-key }}
         PLAN_FILE: ${{ steps.plan.outputs.plan-file }}
         PLATFORMS: ${{ steps.plan.outputs.platforms }}
-      id: cache-plan
-      if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.persisted-mount-cache-enabled == 'true'
-      name: discover cache mounts and derive cache keys
       uses: actions/github-script@v9
       with:
         script: |
@@ -650,9 +651,9 @@ runs:
           core.setOutput('scratch-dir', scratchDirectory)
           core.setOutput('target-hash', targetHash)
 
-    - id: cache
+    - name: restore mount cache
       if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.persisted-mount-cache-enabled == 'true' && steps.cache-plan.outputs.has-cache-paths == 'true'
-      name: restore mount cache
+      id: cache
       uses: actions/cache@v5
       with:
         key: cache-mounts-${{ steps.cache-plan.outputs.compatibility-hash }}-${{ steps.cache-plan.outputs.target-hash }}-${{ steps.cache-plan.outputs.caller-cache-key-hash }}-${{ steps.cache-plan.outputs.freshness-hash }}
@@ -663,8 +664,8 @@ runs:
           cache-mounts-${{ steps.cache-plan.outputs.compatibility-hash }}-${{ steps.cache-plan.outputs.target-hash }}-
           cache-mounts-${{ steps.cache-plan.outputs.compatibility-hash }}-
 
-    - if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.persisted-mount-cache-enabled == 'true' && steps.cache-plan.outputs.has-cache-paths == 'true'
-      name: inject cache into docker
+    - name: inject cache into docker
+      if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.persisted-mount-cache-enabled == 'true' && steps.cache-plan.outputs.has-cache-paths == 'true'
       uses: reproducible-containers/buildkit-cache-dance@4db69aec1c9d8c63a6412a678820f69d2c48569b
       with:
         builder: ${{ steps.buildx.outputs.name }}
@@ -672,9 +673,9 @@ runs:
         scratch-dir: ${{ steps.cache-plan.outputs.scratch-dir }}
         skip-extraction: ${{ steps.cache.outputs.cache-hit }}
 
-    - id: bake
+    - name: bake containers
       if: steps.plan.outputs.has-containers == 'true'
-      name: bake containers
+      id: bake
       uses: docker/bake-action@v7
       with:
         builder: ${{ steps.buildx.outputs.name }}
@@ -682,14 +683,13 @@ runs:
         github-token: ${{ github.token }}
         source: .
 
-    - env:
+    - name: copy exported build results
+      if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.exports-enabled == 'true'
+      shell: bash
+      env:
         EXPORT_DIRECTORY: ${{ steps.plan.outputs.export-directory }}
         OUTPUT_ROOT: ${{ steps.plan.outputs.output-root }}
-      if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.exports-enabled == 'true'
-      name: copy exported build results
       run: |
         set -euo pipefail
         mkdir -p "$EXPORT_DIRECTORY"
         cp -a "$OUTPUT_ROOT"/. "$EXPORT_DIRECTORY"/
-      shell: bash
-  using: composite

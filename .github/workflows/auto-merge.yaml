@@ -97,17 +97,20 @@ jobs:
     if: needs.discover.outputs.count != '0'
     needs:
       - discover
+    runs-on: ubuntu-latest
     permissions:
       checks: read
       contents: write
       pull-requests: write
       statuses: read
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
     steps:
-      - env:
-          PR_NUMBER: ${{ matrix.pr_number }}
+      - name: fetch pull request head metadata
         id: pr
-        name: fetch pull request head metadata
+        env:
+          PR_NUMBER: ${{ matrix.pr_number }}
         uses: actions/github-script@v9
         with:
           script: |
@@ -132,8 +135,8 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.pr.outputs.head_ref }}
 
-      - id: context
-        name: evaluate pull request context
+      - name: evaluate pull request context
+        id: context
         uses: escapace/action-context@v0.14.0
         with:
           context-source: pr
@@ -145,12 +148,12 @@ jobs:
             renovate[bot]
             dependabot[bot]
 
-      - env:
+      - name: select merge strategy
+        id: select_merge_strategy
+        env:
           MERGE_STRATEGY_PREFERENCE: ${{ needs.discover.outputs.merge-strategy }}
           PR_AUTHOR_BOT: ${{ steps.context.outputs.pr-author-bot }}
           PR_CONVENTIONAL_COMMITS: ${{ steps.context.outputs.pr-conventional-commits }}
-        id: select_merge_strategy
-        name: select merge strategy
         uses: actions/github-script@v9
         with:
           script: |
@@ -195,10 +198,7 @@ jobs:
             core.setOutput('selected_strategy', selectedStrategy)
             core.setOutput('merge_flag', selectedStrategy === 'none' ? '' : `--${selectedStrategy}`)
 
-      - env:
-          GH_TOKEN: ${{ github.token }}
-          MERGE_FLAG: ${{ steps.select_merge_strategy.outputs.merge_flag }}
-        id: enable_auto_merge
+      - name: enable auto-merge (queue and non-queue)
         if: |
           steps.pr.outputs.auto_merge_enabled != 'true' &&
           steps.context.outputs.pr-number != '0' &&
@@ -213,14 +213,19 @@ jobs:
             steps.select_merge_strategy.outputs.selected_strategy == 'squash' ||
             steps.select_merge_strategy.outputs.selected_strategy == 'rebase'
           )
-        name: enable auto-merge (queue and non-queue)
+        id: enable_auto_merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_FLAG: ${{ steps.select_merge_strategy.outputs.merge_flag }}
         run: |
           gh pr merge "${{ steps.context.outputs.pr-number }}" \
             --auto \
             "$MERGE_FLAG" \
             --match-head-commit "${{ steps.pr.outputs.head_sha }}"
 
-      - env:
+      - name: summary
+        if: always()
+        env:
           AUTO_MERGE_ENABLED_BEFORE: ${{ steps.pr.outputs.auto_merge_enabled }}
           ENABLE_AUTO_MERGE_OUTCOME: ${{ steps.enable_auto_merge.outcome }}
           MERGE_STRATEGY_SELECTED: ${{ steps.select_merge_strategy.outputs.selected_strategy }}
@@ -237,8 +242,6 @@ jobs:
           PR_NUMBER_REQUESTED: ${{ matrix.pr_number }}
           PR_REVIEW_CLEAR: ${{ steps.context.outputs.pr-review-clear }}
           REQUIRED_LAST_COMMIT_AGE_MINUTE: '60'
-        if: always()
-        name: summary
         uses: actions/github-script@v9
         with:
           script: |
@@ -380,6 +383,3 @@ jobs:
             await core.summary.addEOL()
             await core.summary.addTable(checkRows)
             await core.summary.write()
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
