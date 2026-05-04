@@ -232,7 +232,7 @@ jobs:
       - name: available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
       - name: install dockerfile-tools
-        uses: escapace/action-dockerfile-tools@v0.1.0
+        uses: escapace/action-dockerfile-tools@v0.2.1
       - name: inspect dockerfile
         id: dockerfile
         shell: bash
