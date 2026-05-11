@@ -13,7 +13,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v6
       - name: dependency review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v4.9.0
         with:
           # deny-licenses: GPL-3.0, AGPL-3.0, LGPL-3.0
           fail-on-severity: moderate
