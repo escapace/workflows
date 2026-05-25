@@ -17,7 +17,7 @@ jobs:
       packages: read
     steps:
       - name: docker login
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.1.0
         with:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
