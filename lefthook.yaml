@@ -49,3 +49,13 @@ pre-commit:
       priority: 5
       run: pnpm exec prettier --no-error-on-unmatched-pattern --ignore-unknown --write {staged_files}
       stage_fixed: true
+
+    actionlint:
+      glob: '.github/**/*'
+      priority: 6
+      run: actionlint .github/workflows/*.yaml
+
+    zizmor:
+      glob: '.github/**/*'
+      priority: 7
+      run: zizmor .github --no-progress

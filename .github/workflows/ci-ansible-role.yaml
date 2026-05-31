@@ -24,6 +24,7 @@ jobs:
           username: ${{ github.actor }}
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           submodules: recursive
       - name: install the latest version of uv
         uses: astral-sh/setup-uv@v7
@@ -34,8 +35,13 @@ jobs:
           enable-cache: true
           ignore-nothing-to-cache: true
           version: 'latest'
+      - name: setup socket firewall
+        uses: SocketDev/action@v1.3.1
+        with:
+          job-summary: errors
+          mode: firewall-free
       - name: run molecule test
         run: |
-          uv sync
+          sfw uv sync
           source .venv/bin/activate
           molecule test

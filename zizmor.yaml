@@ -1,0 +1,5 @@
+rules:
+  unpinned-tools:
+    disable: true
+  unpinned-uses:
+    disable: true

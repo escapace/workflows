@@ -106,6 +106,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: ${{ inputs.ref }}
           submodules: recursive
       - name: discover container:build targets
@@ -147,10 +148,18 @@ jobs:
         with:
           run_install: false
           version: ${{ inputs.pnpm-version }}
+      - name: setup socket firewall
+        uses: SocketDev/action@v1.3.1
+        with:
+          job-summary: errors
+          mode: firewall-free
       - name: get pnpm store directory
         id: pnpm-store-path
         run: echo "value=$(pnpm store path)" >> $GITHUB_OUTPUT
+      # Disable shared dependency caches when this CI run is producing an
+      # artifact that a later release/deploy job will publish.
       - name: pnpm cache
+        if: ${{ !(inputs.enable-artifact-upload || inputs.enable-github-pages) }}
         uses: actions/cache@v5
         with:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -165,14 +174,14 @@ jobs:
             pyproject.toml
             uv.lock
             **/pyproject.toml
-          enable-cache: true
+          enable-cache: ${{ !(inputs.enable-artifact-upload || inputs.enable-github-pages) }}
           ignore-nothing-to-cache: true
           version: 'latest'
       - name: install python dependencies
         if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
-        run: uv sync --locked
+        run: sfw uv sync --locked
       - name: install dependencies
-        run: pnpm install
+        run: sfw pnpm install
       - name: run container:export:before hook
         if: steps.discover-export-containers.outputs.has-containers == 'true'
         run: pnpm run --if-present container:export:before
@@ -185,6 +194,7 @@ jobs:
             NODE_VERSION=${{ inputs.node-version }}
             PNPM_VERSION=${{ inputs.pnpm-version }}
             VERSION=${{ inputs.version }}
+          cache: ${{ !(inputs.enable-artifact-upload || inputs.enable-github-pages) }}
           containers: ${{ steps.discover-export-containers.outputs.containers }}
           export-directory: .
       - name: run container:export:after hook
@@ -209,6 +219,7 @@ jobs:
             NODE_VERSION=${{ inputs.node-version }}
             PNPM_VERSION=${{ inputs.pnpm-version }}
             VERSION=${{ inputs.version }}
+          cache: ${{ !(inputs.enable-artifact-upload || inputs.enable-github-pages) }}
           containers: ${{ steps.discover-build-containers.outputs.containers }}
       - name: run container:build:after hook
         if: steps.discover-build-containers.outputs.has-containers == 'true'
@@ -225,6 +236,7 @@ jobs:
             NODE_VERSION=${{ inputs.node-version }}
             PNPM_VERSION=${{ inputs.pnpm-version }}
             VERSION=${{ inputs.version }}
+          cache: ${{ !(inputs.enable-artifact-upload || inputs.enable-github-pages) }}
           containers: ${{ steps.discover-test-containers.outputs.containers }}
       - name: run container:test:after hook
         if: inputs.enable-test && steps.discover-test-containers.outputs.has-containers == 'true'
@@ -245,7 +257,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: pnpm pack
         if: inputs.enable-artifact-upload
-        run: pnpm run pack --version ${{ inputs.version }}
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: pnpm run pack --version "${PACKAGE_VERSION}"
       - name: upload artifact
         if: inputs.enable-artifact-upload
         uses: actions/upload-artifact@v7

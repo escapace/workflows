@@ -23,16 +23,19 @@ jobs:
       - name: github release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_CHANGELOG: ${{ inputs.changelog }}
+          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          echo "${{ inputs.changelog }}" > changelog.md
+          printf '%s' "$RELEASE_CHANGELOG" > changelog.md
 
-          if [[ "${{ inputs.prerelease }}" == "true" ]]; then
-            gh release create v${{ inputs.version }} \
+          if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+            gh release create "v${RELEASE_VERSION}" \
               --repo "${GITHUB_REPOSITORY}" \
               --prerelease \
               --notes-file changelog.md
           else
-            gh release create v${{ inputs.version }} \
+            gh release create "v${RELEASE_VERSION}" \
               --repo "${GITHUB_REPOSITORY}" \
               --notes-file changelog.md
           fi

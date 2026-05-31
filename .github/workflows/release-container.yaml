@@ -230,18 +230,16 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v4
       - name: available platforms
-        run: echo ${{ steps.buildx.outputs.platforms }}
+        env:
+          BUILDX_PLATFORMS: ${{ steps.buildx.outputs.platforms }}
+        run: echo "${BUILDX_PLATFORMS}"
       - name: install dockerfile-tools
         uses: escapace/action-dockerfile-tools@v0.1.0
       - name: inspect dockerfile
         id: dockerfile
         shell: bash
         env:
-          ARCH: ${{ steps.context.outputs.ARCH }}
-          BUILD_ARGS: ${{ inputs.build-args }}
           DOCKERFILE: ${{ steps.context.outputs.dockerfile }}
-          OS: ${{ steps.context.outputs.os }}
-          PLATFORM: ${{ steps.context.outputs.platform }}
         run: |
           stages=$(dockerfile-tools list-stages --dockerfile "${DOCKERFILE}")
 
@@ -250,40 +248,9 @@ jobs:
           else
             echo "test=false" >> "$GITHUB_OUTPUT"
           fi
-
-          args=()
-          args+=(--arg "TARGETPLATFORM=${PLATFORM}")
-          args+=(--arg "TARGETOS=${OS}")
-          args+=(--arg "TARGETARCH=${ARCH}")
-
-          readarray -t lines <<< "$BUILD_ARGS"; for line in "${lines[@]}"; do args+=(--arg "$line"); done
-
-          cache_map="$(dockerfile-tools list-cache-mounts --dockerfile "${DOCKERFILE}" "${args[@]}" | jq -c)"
-          echo "cache-map=${cache_map}" >> "$GITHUB_OUTPUT"
-
-          {
-            echo 'cache-path<<EOF'
-            echo "${cache_map}" | jq -r '. | keys | join("\n")'
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
-      - name: cache
-        id: cache
-        uses: actions/cache@v5
-        with:
-          key: cache-mounts-${{ steps.context.outputs.cache-key }}-${{ hashFiles(steps.context.outputs.dockerfile, '**/pnpm-lock.yaml', '**/uv.lock', '**/go.sum', '**/Cargo.lock') }}
-          path: |
-            ${{ steps.dockerfile.outputs.cache-path }}
-          restore-keys: |
-            cache-mounts-${{ steps.context.outputs.cache-key }}-
-      - name: inject cache into docker
-        uses: reproducible-containers/buildkit-cache-dance@61bd187f75f25d38e056fdd48506fac777c6ebec
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          cache-map: ${{ steps.dockerfile.outputs.cache-map }}
-          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
       - name: test
-        if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true
-        id: test
+        if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true && inputs.enable-push != true
+        id: test-cached
         uses: docker/build-push-action@v7
         with:
           build-args: |
@@ -296,16 +263,25 @@ jobs:
           platforms: ${{ steps.context.outputs.platform }}
           push: false
           target: test
+      - name: test
+        if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true && inputs.enable-push == true
+        id: test-no-cache
+        uses: docker/build-push-action@v7
+        with:
+          build-args: |
+            CONTAINER_TEST=true
+            ${{ inputs.build-args }}
+          context: .
+          file: ${{ steps.context.outputs.dockerfile }}
+          platforms: ${{ steps.context.outputs.platform }}
+          push: false
+          target: test
       - name: (re)build and push
         if: inputs.enable-push == true
         id: push
         uses: docker/build-push-action@v7
         with:
           build-args: ${{ inputs.build-args }}
-          cache-from: |
-            type=gha,scope=${{ steps.context.outputs.cache-key }}
-            type=gha,scope=test-${{ steps.context.outputs.cache-key }}
-          cache-to: type=gha,mode=max,scope=${{ steps.context.outputs.cache-key }}
           context: .
           file: ${{ steps.context.outputs.dockerfile }}
           labels: ${{ steps.container-metadata.outputs.labels }}
@@ -379,12 +355,18 @@ jobs:
       - name: create index and push
         working-directory: /tmp/digests
         shell: bash
+        env:
+          IMAGE: ${{ steps.context.outputs.image }}
         run: |
           readarray -t lines <<< "$DOCKER_METADATA_OUTPUT_ANNOTATIONS"; annotations=(); for line in "${lines[@]}"; do annotations+=(--annotation "$line"); done
+          image_digests=()
+          for digest in *; do
+            image_digests+=("${IMAGE}@sha256:${digest}")
+          done
           docker buildx imagetools create \
             "${annotations[@]}" \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ steps.context.outputs.image }}@sha256:%s ' *)
+            "${image_digests[@]}"
       - name: share manifest digest
         id: manifest-digest
         shell: bash

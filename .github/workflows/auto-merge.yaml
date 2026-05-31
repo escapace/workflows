@@ -133,8 +133,9 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ steps.pr.outputs.head_ref }}
+          persist-credentials: false
 
+          ref: ${{ steps.pr.outputs.head_ref }}
       - name: evaluate pull request context
         id: context
         uses: escapace/action-context@v0.14.0
@@ -217,11 +218,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MERGE_FLAG: ${{ steps.select_merge_strategy.outputs.merge_flag }}
+          PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.context.outputs.pr-number }}
         run: |
-          gh pr merge "${{ steps.context.outputs.pr-number }}" \
+          gh pr merge "${PR_NUMBER}" \
             --auto \
             "$MERGE_FLAG" \
-            --match-head-commit "${{ steps.pr.outputs.head_sha }}"
+            --match-head-commit "${PR_HEAD_SHA}"
 
       - name: summary
         if: always()

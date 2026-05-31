@@ -39,7 +39,7 @@ jobs:
           name: ${{ inputs.artifact-name }}
       - name: install latest npm
         run: |
-          npm install -g npm
+          npm install -g --before="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" npm
           npm --version
       - name: publish to github packages npm registry
         if: inputs.enable-github-packages-npm-registry
