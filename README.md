@@ -1,88 +1,76 @@
-# Workflow Naming Guide
+# GitHub Automation Guide
 
-This repository contains reusable GitHub workflows under `.github/workflows/*.yaml`.
+This repository stores reusable GitHub workflows and composite actions under `.github/`. The guide should stay aligned with the current files to avoid drift in job IDs, outputs, and caller references.
 
-## Goals
+## Layout
 
-- Keep names descriptive and consistent.
-- Group jobs into MECE-style categories (mutually exclusive, collectively exhaustive).
-- Avoid generic job IDs like `main`.
+- `.github/workflows/*.yaml` contains reusable workflows.
+- `.github/actions/*/action.yaml` contains composite actions used by those workflows.
+- `.github/dependabot.yaml` manages GitHub Actions dependency updates.
 
-## Workflow file naming
+## Workflow file names
 
 Use lowercase kebab-case.
 
-Pattern:
-
 - `ci-<target>.yaml` for continuous integration workflows
-- `release-<target>.yaml` for release/publish workflows
-- `<purpose>.yaml` for cross-cutting utility workflows (for example `context.yaml`, `dependency-review.yaml`, `scorecard.yaml`, `retention-policy.yaml`)
+- `release-<target>.yaml` for release and publish workflows
+- `<purpose>.yaml` for cross-cutting workflows such as `auto-merge.yaml`, `codeql.yaml`, `context.yaml`, `dependency-review.yaml`, `retention-policy.yaml`, and `scorecard.yaml`
 
-Examples:
-
-- `ci-typescript.yaml`
-- `release-github-pages.yaml`
-- `dependency-review.yaml`
-
-## Job ID naming
+## Job IDs
 
 Use lowercase kebab-case job IDs.
 
 ### Single-job workflows
 
-For single-job workflows, the job ID should represent the MECE category for that workflow type:
+Prefer stable category IDs when a workflow has one job.
 
-- CI workflows: `continuous-integration`
-- Security workflows: `security-analysis`
-- Release workflows: `release`
-- Maintenance workflows: `maintenance`
-- Context workflows: `context`
+| Workflow                    | Job ID                   |
+| --------------------------- | ------------------------ |
+| `ci-ansible-role.yaml`      | `continuous-integration` |
+| `ci-terraform-module.yaml`  | `continuous-integration` |
+| `ci-typescript.yaml`        | `continuous-integration` |
+| `codeql.yaml`               | `codeql-analysis`        |
+| `context.yaml`              | `context`                |
+| `dependency-review.yaml`    | `security-analysis`      |
+| `release-github-pages.yaml` | `release`                |
+| `release-github.yaml`       | `release`                |
+| `release-typescript.yaml`   | `release`                |
+| `retention-policy.yaml`     | `maintenance`            |
+| `scorecard.yaml`            | `security-analysis`      |
 
-This enables category grouping across workflows while the filename provides target-specific detail.
-
-Examples:
-
-- `ci-typescript.yaml` -> `continuous-integration`
-- `dependency-review.yaml` -> `security-analysis`
-- `release-github.yaml` -> `release`
+`codeql.yaml` intentionally uses `codeql-analysis` instead of `security-analysis`. The workflow has its own permission model and caller contract.
 
 ### Multi-job workflows
 
-Use distinct, phase-oriented names per job. Each job ID should describe one stage in the flow.
+Use phase-oriented job IDs that describe one step in the flow.
 
-Good patterns:
+| Workflow                 | Job IDs                       |
+| ------------------------ | ----------------------------- |
+| `auto-merge.yaml`        | `discover`, `auto-merge`      |
+| `release-container.yaml` | `prepare`, `build`, `publish` |
 
-- `context` / `prepare` / `build` / `publish` / `finalize`
-- `analyze` / `plan` / `apply`
+Avoid generic IDs such as `main`, `job1`, or `job2`.
 
-Avoid:
+## Local action names
 
-- `main`
-- `job1`, `job2`
+Use lowercase kebab-case for directories under `.github/actions/`.
 
-## Dependency and output wiring rules
+Composite actions:
 
-When renaming a job ID, always update all references:
+- `bake-containers`
+- `discover-containers`
 
-- `needs.<job-id>` references
-- `jobs.<job-id>.outputs.*` mappings
-- comments/doc snippets that encode job IDs (to prevent drift)
+If an action name, input, or output changes, update every workflow that calls it.
 
-Checklist:
+## Rename checklist
 
-1. Rename `jobs.<old-id>` -> `jobs.<new-id>`.
-2. Search for `<old-id>` in the same file and update all references.
-3. Validate workflow syntax and run references before merging.
-
-## Current category map
-
-- `ci-*` -> `continuous-integration`
-- `dependency-review.yaml`, `scorecard.yaml` -> `security-analysis`
-- `release-github*.yaml`, `release-typescript.yaml` -> `release`
-- `retention-policy.yaml` -> `maintenance`
-- `context.yaml` -> `context`
+1. Rename the workflow file, job ID, or action directory.
+2. Update `needs.<job-id>` references.
+3. Update `jobs.<job-id>.outputs.*` references.
+4. Update `uses:` references for local actions and reusable workflows.
+5. Validate workflow syntax and caller references before merging.
 
 ## Notes
 
-- Reusable workflows do not require a top-level `name:`.
-- Caller workflows are responsible for user-facing workflow names in repository Actions views.
+- Reusable workflows do not need a top-level `name:`.
+- Caller workflows own the display name shown in the GitHub Actions UI.
