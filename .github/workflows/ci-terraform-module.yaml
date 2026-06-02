@@ -52,7 +52,7 @@ jobs:
           run_install: false
           version: ${{ inputs.pnpm-version }}
       - name: setup socket firewall
-        uses: SocketDev/action@v1.3.1
+        uses: SocketDev/action@v1.3.2
         with:
           job-summary: errors
           mode: firewall-free
