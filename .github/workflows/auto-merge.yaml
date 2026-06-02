@@ -32,7 +32,7 @@ jobs:
         env:
           INPUT_MERGE_STRATEGY: ${{ inputs.merge-strategy }}
           INPUT_PR_NUMBER: ${{ inputs.pr-number }}
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const mergeStrategyInput = (process.env.INPUT_MERGE_STRATEGY ?? '').trim().toLowerCase() || 'rebase,squash'
@@ -111,7 +111,7 @@ jobs:
         id: pr
         env:
           PR_NUMBER: ${{ matrix.pr_number }}
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const pullNumber = Number(process.env.PR_NUMBER)
@@ -130,7 +130,7 @@ jobs:
             core.setOutput('auto_merge_enabled', String(pull.auto_merge !== null))
 
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -155,7 +155,7 @@ jobs:
           MERGE_STRATEGY_PREFERENCE: ${{ needs.discover.outputs.merge-strategy }}
           PR_AUTHOR_BOT: ${{ steps.context.outputs.pr-author-bot }}
           PR_CONVENTIONAL_COMMITS: ${{ steps.context.outputs.pr-conventional-commits }}
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const toBoolean = (value) => String(value ?? '').toLowerCase() === 'true'
@@ -245,7 +245,7 @@ jobs:
           PR_NUMBER_REQUESTED: ${{ matrix.pr_number }}
           PR_REVIEW_CLEAR: ${{ steps.context.outputs.pr-review-clear }}
           REQUIRED_LAST_COMMIT_AGE_MINUTE: '60'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const toBoolean = (value) => String(value ?? '').toLowerCase() === 'true'

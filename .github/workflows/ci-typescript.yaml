@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           ref: ${{ inputs.ref }}
@@ -131,7 +131,7 @@ jobs:
           required-script-name: ${{ inputs.container-test-required-script-name }}
           required-target: test
       - name: setup node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: ${{ inputs.node-version }}
       - name: write .npmrc
@@ -149,7 +149,7 @@ jobs:
           run_install: false
           version: ${{ inputs.pnpm-version }}
       - name: setup socket firewall
-        uses: SocketDev/action@v1.3.2
+        uses: SocketDev/action@ba6de6cc0565af1f42295590380973573297e31f # v1.3.2
         with:
           job-summary: errors
           mode: firewall-free
@@ -160,7 +160,7 @@ jobs:
       # artifact that a later release/deploy job will publish.
       - name: pnpm cache
         if: ${{ !(inputs.enable-artifact-upload || inputs.enable-github-pages) }}
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           path: ${{ steps.pnpm-store-path.outputs.value }}
@@ -168,7 +168,7 @@ jobs:
             ${{ runner.os }}-pnpm-store
       - name: install the latest version of uv
         if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           cache-dependency-glob: |
             pyproject.toml
@@ -243,16 +243,16 @@ jobs:
         run: pnpm run --if-present container:test:after
       - name: codeql init
         if: inputs.enable-codeql
-        uses: github/codeql-action/init@v4.36.0
+        uses: github/codeql-action/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           build-mode: none
           languages: ${{ inputs.codeql-languages }}
       - name: codeql analysis
         if: inputs.enable-codeql
-        uses: github/codeql-action/analyze@v4.36.0
+        uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
       - name: code coverage
         if: inputs.enable-codecov && inputs.enable-test
-        uses: codecov/codecov-action@v6.0.1
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: pnpm pack
@@ -262,7 +262,7 @@ jobs:
         run: pnpm run pack --version "${PACKAGE_VERSION}"
       - name: upload artifact
         if: inputs.enable-artifact-upload
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.artifact-name }}
           path: |
@@ -274,7 +274,7 @@ jobs:
         run: pnpm run build:github-pages --base "/${GITHUB_REPOSITORY#*/}/"
       - name: upload github-pages
         if: inputs.enable-github-pages
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           name: ${{ inputs.github-pages-artifact-name }}
           path: ${{ inputs.github-pages-path }}

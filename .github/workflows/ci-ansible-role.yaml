@@ -17,17 +17,17 @@ jobs:
       packages: read
     steps:
       - name: docker login
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           username: ${{ github.actor }}
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           submodules: recursive
       - name: install the latest version of uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           cache-dependency-glob: |
             **/pyproject.toml
@@ -36,7 +36,7 @@ jobs:
           ignore-nothing-to-cache: true
           version: 'latest'
       - name: setup socket firewall
-        uses: SocketDev/action@v1.3.2
+        uses: SocketDev/action@ba6de6cc0565af1f42295590380973573297e31f # v1.3.2
         with:
           job-summary: errors
           mode: firewall-free
