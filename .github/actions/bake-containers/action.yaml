@@ -381,7 +381,7 @@ runs:
 
     - name: install dockerfile-tools
       if: steps.plan.outputs.has-containers == 'true'
-      uses: escapace/action-dockerfile-tools@v0.2.1
+      uses: escapace/action-dockerfile-tools@v0.2.2
 
     - name: discover cache mounts and derive cache keys
       if: steps.plan.outputs.has-containers == 'true' && steps.plan.outputs.persisted-mount-cache-enabled == 'true'
