@@ -138,7 +138,7 @@ jobs:
           ref: ${{ steps.pr.outputs.head_ref }}
       - name: evaluate pull request context
         id: context
-        uses: escapace/action-context@v0.14.0
+        uses: escapace/action-context@v0.14.1
         with:
           context-source: pr
           pr-head-ref: ${{ steps.pr.outputs.head_ref }}

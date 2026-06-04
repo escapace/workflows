@@ -114,7 +114,7 @@ jobs:
           persist-credentials: false
           ref: ${{ github.head_ref || github.ref }}
       - id: action-context
-        uses: escapace/action-context@v0.14.0
+        uses: escapace/action-context@v0.14.1
         with:
           node-version: v24.13.0
           token: ${{ github.token }}
