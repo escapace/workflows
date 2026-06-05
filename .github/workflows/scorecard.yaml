@@ -6,6 +6,8 @@ permissions:
 
 jobs:
   security-analysis:
+    # Keep this on a full Ubuntu runner. ossf/scorecard-action is a Docker action,
+    # and ubuntu-slim is an unprivileged container runner.
     runs-on: ubuntu-latest
     permissions:
       actions: read

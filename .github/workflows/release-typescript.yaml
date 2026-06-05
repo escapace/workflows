@@ -65,6 +65,9 @@ jobs:
             is_scoped=$(echo "${package_json}" | jq -r 'if has("name") then (.name | startswith("@escapace/")) else false end')
 
             if [[ "${is_scoped}" == "true" && "${is_private}" == "false" ]]; then
+              # Keep the CLI flag even with NPM_CONFIG_PROVENANCE=false. In practice,
+              # GitHub Packages publishes can still try to generate provenance from
+              # package publishConfig and fail without id-token: write.
               npm publish --provenance=false "${file}"
             fi
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
