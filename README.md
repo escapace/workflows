@@ -34,7 +34,6 @@ Prefer stable category IDs when a workflow has one job.
 | `dependency-review.yaml`    | `security-analysis`      |
 | `release-github-pages.yaml` | `release`                |
 | `release-github.yaml`       | `release`                |
-| `release-typescript.yaml`   | `release`                |
 | `retention-policy.yaml`     | `maintenance`            |
 | `scorecard.yaml`            | `security-analysis`      |
 
@@ -44,10 +43,11 @@ Prefer stable category IDs when a workflow has one job.
 
 Use phase-oriented job IDs that describe one step in the flow.
 
-| Workflow                 | Job IDs                       |
-| ------------------------ | ----------------------------- |
-| `auto-merge.yaml`        | `discover`, `auto-merge`      |
-| `release-container.yaml` | `prepare`, `build`, `publish` |
+| Workflow                  | Job IDs                                  |
+| ------------------------- | ---------------------------------------- |
+| `auto-merge.yaml`         | `discover`, `auto-merge`                 |
+| `release-container.yaml`  | `prepare`, `build`, `publish`            |
+| `release-typescript.yaml` | `publish-github-packages`, `publish-npm` |
 
 Avoid generic IDs such as `main`, `job1`, or `job2`.
 

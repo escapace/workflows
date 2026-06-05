@@ -22,11 +22,17 @@ on:
 
 permissions: {}
 
+# npm trusted publishing notes:
+# - npm validates the caller workflow filename for workflow_call, not this reusable workflow filename.
+# - Callers must route each package's npm publishes through one top-level workflow file and register that filename on npm.
+# - Callers must grant id-token: write when invoking this workflow.
+# - NPM_TOKEN remains declared as an optional secret for rollout compatibility, but is intentionally ignored.
 jobs:
-  release:
+  publish-github-packages:
+    name: publish GitHub Packages
+    if: inputs.enable-github-packages-npm-registry
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       packages: write
     steps:
       - name: setup node
@@ -42,14 +48,14 @@ jobs:
           npm install -g --before="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" npm
           npm --version
       - name: publish to github packages npm registry
-        if: inputs.enable-github-packages-npm-registry
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cat << EOF > "$HOME/.npmrc"
-            //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-            @escapace:registry=https://npm.pkg.github.com
-          EOF
+        run:
+          | # zizmor: ignore[use-trusted-publishing] GitHub Packages uses GITHUB_TOKEN; npm trusted publishing only applies to npmjs.org
+          printf '%s\n' \
+            "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" \
+            '@escapace:registry=https://npm.pkg.github.com' \
+            > "$HOME/.npmrc"
 
           while read -d '' -r file; do
             package_json=$(tar -axOf "${file}" package/package.json)
@@ -61,15 +67,46 @@ jobs:
               npm publish "${file}"
             fi
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
-      - name: publish to npm registry
-        if: inputs.enable-npm-registry
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-npm:
+    name: publish npm
+    if: >-
+      ${{
+        !cancelled() &&
+        inputs.enable-npm-registry &&
+        (needs.publish-github-packages.result == 'success' || needs.publish-github-packages.result == 'skipped')
+      }}
+    needs:
+      - publish-github-packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: setup node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: download package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact-name }}
+      - name: install latest npm
         run: |
-          cat << EOF > "$HOME/.npmrc"
-            //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-            @escapace:registry=https://registry.npmjs.org
-          EOF
+          npm install -g --before="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" npm
+          npm --version
+      - name: validate trusted publishing prerequisites
+        run: |
+          if [[ "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" == "" || "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" == "" ]]; then
+            echo "::error title=Missing OIDC permissions::Grant id-token: write in the caller workflow and register the caller workflow filename as the npm trusted publisher."
+            exit 1
+          fi
+      - name: publish to npm registry with trusted publishing
+        run: |
+          printf '%s\n' \
+            'registry=https://registry.npmjs.org' \
+            '@escapace:registry=https://registry.npmjs.org' \
+            > "$HOME/.npmrc"
 
           while read -d '' -r file; do
             if [[ "$(tar -axOf "${file}" package/package.json | jq -r 'if has("private") then .private else true end')" == "false" ]]; then
