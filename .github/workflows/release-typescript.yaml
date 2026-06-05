@@ -80,7 +80,6 @@ jobs:
       - publish-github-packages
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       id-token: write
     steps:
       - name: setup node
