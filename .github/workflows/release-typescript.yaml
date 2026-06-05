@@ -50,6 +50,7 @@ jobs:
       - name: publish to github packages npm registry
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: false
         run:
           | # zizmor: ignore[use-trusted-publishing] GitHub Packages uses GITHUB_TOKEN; npm trusted publishing only applies to npmjs.org
           printf '%s\n' \
