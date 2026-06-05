@@ -177,9 +177,11 @@ jobs:
           enable-cache: ${{ !(inputs.enable-artifact-upload || inputs.enable-github-pages) }}
           ignore-nothing-to-cache: true
           version: 'latest'
+      # TODO: Run uv directly until sfw-free stops breaking uv commands:
+      # https://github.com/SocketDev/sfw-free/issues/30
       - name: install python dependencies
         if: ${{ hashFiles('pyproject.toml') != '' && hashFiles('uv.lock') != '' }}
-        run: sfw uv sync --locked
+        run: uv sync --locked
       - name: install dependencies
         run: sfw pnpm install
       - name: run container:export:before hook

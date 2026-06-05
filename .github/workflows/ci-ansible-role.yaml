@@ -40,8 +40,10 @@ jobs:
         with:
           job-summary: errors
           mode: firewall-free
+      # TODO: Run uv directly until sfw-free stops breaking uv commands:
+      # https://github.com/SocketDev/sfw-free/issues/30
       - name: run molecule test
         run: |
-          sfw uv sync
+          uv sync
           source .venv/bin/activate
           molecule test
