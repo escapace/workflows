@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   discover:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: read
     outputs:
@@ -97,7 +97,7 @@ jobs:
     if: needs.discover.outputs.count != '0'
     needs:
       - discover
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       checks: read
       contents: write

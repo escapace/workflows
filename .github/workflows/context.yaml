@@ -79,7 +79,7 @@ on:
 
 jobs:
   context:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       changelog: ${{ steps.action-context.outputs.changelog }}
       context: ${{ steps.action-context.outputs.context }}

@@ -31,7 +31,7 @@ jobs:
   publish-github-packages:
     name: publish-github-packages
     if: inputs.enable-github-packages-npm-registry
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       packages: write
     steps:
@@ -79,7 +79,7 @@ jobs:
       }}
     needs:
       - publish-github-packages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       id-token: write
     steps:
