@@ -29,7 +29,7 @@ permissions: {}
 # - NPM_TOKEN remains declared as an optional secret for rollout compatibility, but is intentionally ignored.
 jobs:
   publish-github-packages:
-    name: publish GitHub Packages
+    name: publish-github-packages
     if: inputs.enable-github-packages-npm-registry
     runs-on: ubuntu-latest
     permissions:
@@ -69,7 +69,7 @@ jobs:
           done < <(find "." -type f -name '*.tgz' -not -path '**/node_modules/**' -print0 2>/dev/null)
 
   publish-npm:
-    name: publish npm
+    name: publish-npm
     if: >-
       ${{
         !cancelled() &&
