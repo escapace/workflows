@@ -236,7 +236,7 @@ jobs:
           BUILDX_PLATFORMS: ${{ steps.buildx.outputs.platforms }}
         run: echo "${BUILDX_PLATFORMS}"
       - name: install dockerfile-tools
-        uses: escapace/action-dockerfile-tools@v0.2.1
+        uses: escapace/action-dockerfile-tools@v0.2.2
       - name: inspect dockerfile
         id: dockerfile
         shell: bash
