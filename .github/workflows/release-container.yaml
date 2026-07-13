@@ -188,7 +188,7 @@ jobs:
         id: container-metadata
         # env:
         #   DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           flavor: |
             latest=false
@@ -220,17 +220,17 @@ jobs:
           tar -xf "${ARCHIVE}"
           printf '%s\n' "${array[@]}" | xargs rm -f
       - name: docker login
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           username: ${{ github.actor }}
       - name: setup qemu
         # TODO: limit platforms
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
       - name: docker buildx
         id: buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       - name: available platforms
         env:
           BUILDX_PLATFORMS: ${{ steps.buildx.outputs.platforms }}
@@ -253,7 +253,7 @@ jobs:
       - name: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true && inputs.enable-push != true
         id: test-cached
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           build-args: |
             CONTAINER_TEST=true
@@ -268,7 +268,7 @@ jobs:
       - name: test
         if: fromJSON(steps.dockerfile.outputs.test) == true && inputs.enable-test == true && inputs.enable-push == true
         id: test-no-cache
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           build-args: |
             CONTAINER_TEST=true
@@ -281,7 +281,7 @@ jobs:
       - name: (re)build and push
         if: inputs.enable-push == true
         id: push
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           build-args: ${{ inputs.build-args }}
           context: .
@@ -337,7 +337,7 @@ jobs:
         id: container-metadata
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: index
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           flavor: |
             latest=false
@@ -349,8 +349,8 @@ jobs:
             type=match,pattern=v(\d.\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
             type=match,pattern=v(\d),group=1,enable=${{ startsWith(inputs.version, '0') == false && inputs.prerelease == false }},value=v${{ inputs.version }}
             type=raw,value=latest,enable=${{ inputs.latest && inputs.prerelease == false }}
-      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-      - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
@@ -405,7 +405,7 @@ jobs:
           echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
       - name: provenance
         if: inputs.enable-build-provenance-attestation == true && inputs.enable-push == true
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           push-to-registry: true
           subject-digest: ${{ steps.manifest-digest.outputs.value }}
